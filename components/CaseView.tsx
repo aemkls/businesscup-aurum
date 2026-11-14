@@ -29,7 +29,7 @@ export function CaseView() {
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <ButtonLink href="/check">Check my bill</ButtonLink>
-            <ButtonLink href="/check?sample=1" variant="secondary">
+            <ButtonLink href="/check?sample=er" variant="secondary">
               Try with a sample bill
             </ButtonLink>
           </div>

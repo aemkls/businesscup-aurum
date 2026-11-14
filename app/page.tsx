@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AuditedBill } from "@/components/AuditedBill";
 import { ResumeCase } from "@/components/ResumeCase";
 import { ButtonLink } from "@/components/ui";
@@ -51,7 +52,7 @@ export default function Home() {
               you likely don&apos;t owe.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <ButtonLink href="/check?sample=1" className="w-full sm:w-auto">
+              <ButtonLink href="/check?sample=er" className="w-full sm:w-auto">
                 Try with a sample bill
               </ButtonLink>
               <ButtonLink href="/check" variant="secondary" className="w-full sm:w-auto">
@@ -59,6 +60,20 @@ export default function Home() {
               </ButtonLink>
             </div>
             <p className="mt-4 text-caption text-ink-muted">
+              Two samples to try: an{" "}
+              <Link href="/check?sample=er" className="font-semibold text-action hover:underline">
+                ER visit
+              </Link>{" "}
+              or a &ldquo;free&rdquo;{" "}
+              <Link
+                href="/check?sample=physical"
+                className="font-semibold text-action hover:underline"
+              >
+                annual physical
+              </Link>
+              .
+            </p>
+            <p className="mt-1 text-caption text-ink-muted">
               About two minutes. No sign-up. We never store your files.
             </p>
             <ResumeCase />

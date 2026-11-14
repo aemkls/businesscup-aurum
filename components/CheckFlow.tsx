@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useMemo, useState } from "react";
-import { sampleBill, sampleEob, samplePlan } from "@/data/samples/sample";
+import { SAMPLES, type SampleKind } from "@/data/samples";
 import { saveCase } from "@/lib/caseStore";
 import { billToText, eobToText } from "@/lib/documentText";
 import { loadPlanDraft, savePlanDraft } from "@/lib/planDraft";
@@ -103,12 +103,13 @@ function planProblem(form: PlanForm): string {
 
 type Failure = { message: string; busy: boolean };
 
-export function CheckFlow({ sample }: { sample: boolean }) {
+export function CheckFlow({ sample }: { sample: SampleKind | null }) {
+  const sampleCase = sample ? SAMPLES[sample] : null;
   const router = useRouter();
   // This component only renders in the browser (it sits under useSearchParams
   // in a Suspense boundary), so reading localStorage here is safe.
   const [plan, setPlanState] = useState<PlanForm>(() =>
-    sample ? toForm(samplePlan) : loadPlanDraft(EMPTY),
+    sampleCase ? toForm(sampleCase.plan) : loadPlanDraft(EMPTY),
   );
   const [step, setStep] = useState<1 | 2>(1);
   const [showProblem, setShowProblem] = useState(false);
@@ -140,7 +141,7 @@ export function CheckFlow({ sample }: { sample: boolean }) {
     setFailure(null);
     const body = new FormData();
     body.set("plan", JSON.stringify(toPlan(plan)));
-    if (sample) body.set("sample", "1");
+    if (sample) body.set("sample", sample);
     if (bill) body.set("bill", bill);
     if (eob) body.set("eob", eob);
     try {
@@ -171,7 +172,7 @@ export function CheckFlow({ sample }: { sample: boolean }) {
     <Section>
       <div className="mx-auto max-w-[640px]">
         <p className="text-caption font-semibold text-ink-muted">
-          {sample ? "Sample case: an ER visit" : "Check my bill"} · Step {step} of 2
+          {sampleCase ? `Sample case: ${sampleCase.label}` : "Check my bill"} · Step {step} of 2
         </p>
         <div
           className="mt-3 h-1 overflow-hidden rounded-full bg-desk-deep"
@@ -195,8 +196,9 @@ export function CheckFlow({ sample }: { sample: boolean }) {
                 ? "An invented patient's plan, filled in for you. The check after this is the real one."
                 : "Copy six numbers from your insurance portal or plan summary. We keep them in this browser."}
             </p>
+            {sample && <SampleSwitch current={sample} />}
             {!sample && (
-              <TextButton onClick={() => setPlan(toForm(samplePlan))} className="mt-2">
+              <TextButton onClick={() => setPlan(toForm(SAMPLES.er.plan))} className="mt-2">
                 Fill from sample
               </TextButton>
             )}
@@ -255,7 +257,7 @@ export function CheckFlow({ sample }: { sample: boolean }) {
           <div>
             <h1 className="mt-8 text-section-sm font-extrabold md:text-section">Your documents</h1>
             {running ? (
-              <AnalysisProgress hasEob={sample || eob !== null} />
+              <AnalysisProgress hasEob={sample !== null || eob !== null} />
             ) : (
               <>
                 <p className="mt-3 text-body text-ink-muted">
@@ -266,10 +268,13 @@ export function CheckFlow({ sample }: { sample: boolean }) {
 
                 {sample ? (
                   <div className="mt-8 space-y-3">
-                    <DocumentPreview title="Hospital bill (sample)" text={billToText(sampleBill)} />
+                    <DocumentPreview
+                      title="Hospital bill (sample)"
+                      text={billToText(sampleCase!.bill)}
+                    />
                     <DocumentPreview
                       title="Explanation of Benefits (sample)"
-                      text={eobToText(sampleEob)}
+                      text={eobToText(sampleCase!.eob)}
                     />
                   </div>
                 ) : (
@@ -323,7 +328,7 @@ export function CheckFlow({ sample }: { sample: boolean }) {
                       <p className="text-caption text-ink-muted">
                         The free AI reader is sometimes overloaded for a minute. You can also{" "}
                         <Link
-                          href="/check?sample=1"
+                          href="/check?sample=er"
                           className="font-semibold text-action hover:underline"
                         >
                           try the sample bill
@@ -346,6 +351,32 @@ export function CheckFlow({ sample }: { sample: boolean }) {
         )}
       </div>
     </Section>
+  );
+}
+
+/** Switch between the two sample cases; each is its own URL so Back works. */
+function SampleSwitch({ current }: { current: SampleKind }) {
+  return (
+    <nav aria-label="Sample case" className="mt-5">
+      <div className="inline-flex rounded-full border border-rule bg-paper p-1">
+        {Object.values(SAMPLES).map((option) => {
+          const active = option.kind === current;
+          return (
+            <Link
+              key={option.kind}
+              href={`/check?sample=${option.kind}`}
+              aria-current={active ? "page" : undefined}
+              className={`rounded-full px-4 py-2 text-caption ${
+                active ? "bg-ink font-semibold text-white" : "text-ink-muted hover:text-ink"
+              }`}
+            >
+              {option.label}
+            </Link>
+          );
+        })}
+      </div>
+      <p className="mt-2 text-caption text-ink-muted">{SAMPLES[current].summary}</p>
+    </nav>
   );
 }
 
