@@ -40,6 +40,9 @@ export async function createCheckoutUrl(origin: string): Promise<string> {
   const session = await stripe().checkout.sessions.create({
     mode: "payment",
     line_items: [lineItem()],
+    // The product is for US patients: always charge in US dollars, not in
+    // the currency Stripe guesses from the visitor's location.
+    adaptive_pricing: { enabled: false },
     success_url: `${origin}/results?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origin}/results`,
   });
