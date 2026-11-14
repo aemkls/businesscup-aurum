@@ -40,3 +40,10 @@ describe("the ER sample is unchanged by the preventive rules", () => {
     expect(summarize(sampleBill, findings).potentialSavings).toBe(2547);
   });
 });
+
+describe("ordering", () => {
+  it("lists money back before findings that are only worth asking about", () => {
+    const types = runEngine(physicalBill, physicalEob, physicalPlan).map((f) => f.type);
+    expect(types).toEqual(["preventive_cost_sharing", "preventive_cost_sharing", "split_visit"]);
+  });
+});

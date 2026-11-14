@@ -21,7 +21,10 @@ export function runEngine(bill: Bill, eob: Eob | null, plan: PlanInfo): Finding[
     ...deniedClaims(eob),
     ...preventiveCare(bill, eob, plan),
   ];
-  return findings.sort((a, b) => b.amount - a.amount);
+  // Money back first, by amount; "worth asking" (low confidence) after it.
+  return findings.sort(
+    (a, b) => Number(a.confidence === "low") - Number(b.confidence === "low") || b.amount - a.amount,
+  );
 }
 
 export function summarize(
