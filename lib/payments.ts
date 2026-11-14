@@ -15,7 +15,7 @@ export function paymentsConfigured(): boolean {
   return Boolean(process.env.STRIPE_SECRET_KEY);
 }
 
-function stripe(): Stripe {
+export function stripe(): Stripe {
   return new Stripe(process.env.STRIPE_SECRET_KEY as string);
 }
 
@@ -57,4 +57,22 @@ export async function isPaid(sessionId: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/**
+ * The loyalty card's free case: a $0 setup checkout where the user confirms
+ * the card they paid with. Nothing is charged; the server compares the card
+ * fingerprint with the stamped payments when the user comes back.
+ */
+export async function createLoyaltySetupUrl(origin: string): Promise<string> {
+  const session = await stripe().checkout.sessions.create({
+    mode: "setup",
+    // Cards only (this API version's name for payment_method_types).
+    allowed_payment_method_types: ["card"],
+    currency: "usd",
+    success_url: `${origin}/results?loyalty_session={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${origin}/results?tab=letters`,
+  });
+  if (!session.url) throw new Error("Stripe did not return a checkout URL");
+  return session.url;
 }
