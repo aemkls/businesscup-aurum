@@ -8,6 +8,7 @@ export const planSchema = z
     coinsurancePct: z.number().min(0).max(100),
     oopMax: z.number().min(0).max(1000000),
     oopMet: z.number().min(0).max(1000000),
+    copay: z.number().min(0).max(100000).default(0),
     inNetwork: z.boolean(),
   })
   .transform((p) => ({

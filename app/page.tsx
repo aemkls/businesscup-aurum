@@ -4,7 +4,7 @@ import { ResumeCase } from "@/components/ResumeCase";
 const STEPS = [
   {
     title: "Tell us your plan",
-    text: "Four numbers from your insurance card or portal: deductible, what you have paid so far, coinsurance and out-of-pocket max.",
+    text: "A few numbers from your insurance card or portal: deductible, what you have paid so far, coinsurance, out-of-pocket max and copay.",
   },
   {
     title: "Add the bill and the EOB",

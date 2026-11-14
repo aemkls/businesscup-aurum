@@ -16,6 +16,13 @@ describe("expectedPatientShare", () => {
     expect(expectedPatientShare(1000, { ...samplePlan, deductibleMet: 1500 })).toBe(200);
   });
 
+  it("takes the copay first, then deductible and coinsurance on the rest", () => {
+    // $250 copay; $750 left goes to the $1,000 deductible left.
+    expect(expectedPatientShare(1000, { ...samplePlan, copay: 250 })).toBe(1000);
+    // Deductible met: $250 copay + 20% of the remaining $750.
+    expect(expectedPatientShare(1000, { ...samplePlan, copay: 250, deductibleMet: 1500 })).toBe(400);
+  });
+
   it("never exceeds what is left of the out-of-pocket maximum", () => {
     expect(expectedPatientShare(50000, { ...samplePlan, oopMet: 5800 })).toBe(200);
   });

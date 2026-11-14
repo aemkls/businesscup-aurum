@@ -15,6 +15,8 @@ export interface PlanInfo {
   oopMax: number;
   /** Out-of-pocket already paid this year BEFORE this visit. */
   oopMet: number;
+  /** Flat copay for this kind of visit (e.g. an ER copay). 0 if the plan has none. */
+  copay: number;
   /** Was the provider in the plan's network? */
   inNetwork: boolean;
 }

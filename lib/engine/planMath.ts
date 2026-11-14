@@ -3,15 +3,20 @@ import { cents, sum, usd } from "./money";
 
 /**
  * What the patient should owe for a covered, in-network allowed amount:
- * first the remaining deductible, then coinsurance on the rest,
- * capped by what is left of the out-of-pocket maximum.
+ * the visit copay first, then the remaining deductible, then coinsurance on
+ * the rest, all capped by what is left of the out-of-pocket maximum.
+ *
+ * Plans differ on whether a copay also counts against the deductible; this
+ * uses the common "copay, then deductible and coinsurance on the rest" order.
  */
 export function expectedPatientShare(allowed: number, plan: PlanInfo): number {
+  const copay = Math.min(allowed, plan.copay);
+  const afterCopay = allowed - copay;
   const deductibleLeft = Math.max(0, plan.deductible - plan.deductibleMet);
-  const towardDeductible = Math.min(allowed, deductibleLeft);
-  const coinsurance = (allowed - towardDeductible) * (plan.coinsurancePct / 100);
+  const towardDeductible = Math.min(afterCopay, deductibleLeft);
+  const coinsurance = (afterCopay - towardDeductible) * (plan.coinsurancePct / 100);
   const oopLeft = Math.max(0, plan.oopMax - plan.oopMet);
-  return cents(Math.min(towardDeductible + coinsurance, oopLeft));
+  return cents(Math.min(copay + towardDeductible + coinsurance, oopLeft));
 }
 
 /**
@@ -49,6 +54,7 @@ export function planMath(eob: Eob | null, plan: PlanInfo): Finding[] {
         `Allowed amount on covered lines: ${usd(allowed)}`,
         `Deductible left before this visit: ${usd(deductibleLeft)}`,
         `Coinsurance: ${plan.coinsurancePct}%`,
+        ...(plan.copay > 0 ? [`Copay for this visit: ${usd(plan.copay)}`] : []),
         `Deductible applied on the EOB: ${usd(eob.deductibleApplied)}`,
         `Expected patient share: ${usd(expected)}; EOB patient share: ${usd(charged)}`,
       ],

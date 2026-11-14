@@ -12,6 +12,7 @@ export const samplePlan: PlanInfo = {
   coinsurancePct: 20,
   oopMax: 6000,
   oopMet: 500,
+  copay: 0,
   inNetwork: true,
 };
 

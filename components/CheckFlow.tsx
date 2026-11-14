@@ -22,6 +22,7 @@ const EMPTY: PlanForm = {
   coinsurancePct: "20",
   oopMax: "",
   oopMet: "",
+  copay: "0",
   inNetwork: true,
 };
 
@@ -31,6 +32,7 @@ const FIELDS: { key: Exclude<keyof PlanInfo, "inNetwork">; label: string; hint: 
   { key: "coinsurancePct", label: "Coinsurance", hint: "Your share after the deductible. Often 20%.", unit: "%" },
   { key: "oopMax", label: "Out-of-pocket maximum", hint: "The most you can pay in a year.", unit: "$" },
   { key: "oopMet", label: "Out-of-pocket already paid this year", hint: "Before this visit.", unit: "$" },
+  { key: "copay", label: "Copay for this visit", hint: "Flat fee for this type of visit, e.g. an ER copay. 0 if none.", unit: "$" },
 ];
 
 function toForm(plan: PlanInfo): PlanForm {
@@ -40,6 +42,7 @@ function toForm(plan: PlanInfo): PlanForm {
     coinsurancePct: String(plan.coinsurancePct),
     oopMax: String(plan.oopMax),
     oopMet: String(plan.oopMet),
+    copay: String(plan.copay),
     inNetwork: plan.inNetwork,
   };
 }
@@ -82,6 +85,7 @@ export function CheckFlow({ sample }: { sample: boolean }) {
         coinsurancePct: Number(plan.coinsurancePct),
         oopMax: Number(plan.oopMax),
         oopMet: Number(plan.oopMet),
+        copay: Number(plan.copay),
         inNetwork: plan.inNetwork,
       }),
     );

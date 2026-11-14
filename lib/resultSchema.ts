@@ -9,6 +9,7 @@ export const resultSchema = z.object({
     coinsurancePct: z.number(),
     oopMax: z.number(),
     oopMet: z.number(),
+    copay: z.number().default(0), // cases saved before copay existed
     inNetwork: z.boolean(),
   }),
   bill: billSchema,
