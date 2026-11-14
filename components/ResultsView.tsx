@@ -99,6 +99,8 @@ export function ResultsView({
   const loyalty = useLoyalty();
   const family = useFamily();
   const familyActive = Boolean(family?.enabled && family.active);
+  /** Until /api/family answers, a subscriber must not see the paywall flash. */
+  const familyLoading = family === null;
   // A failure belongs to the case it happened on: a new case starts clean.
   const caseKey = saved ? saved.createdAt : null;
   const [failure, setFailure] = useState<{
@@ -386,14 +388,15 @@ export function ResultsView({
     .filter((f) => f.confidence === "low")
     .reduce((total, f) => total + f.amount, 0);
 
-  const busy = starting || returning || redeeming || restoring || Boolean(familySession);
+  const busy =
+    starting || returning || redeeming || restoring || familyLoading || Boolean(familySession);
   const unlockButton = (
     <Button onClick={free ? unlockFree : unlock} disabled={busy}>
       {returning
         ? "Confirming your payment…"
         : redeeming
           ? "Checking your card…"
-          : starting
+          : starting || familyLoading
             ? "One moment…"
             : free
               ? "Unlock free with your loyalty card"
@@ -441,7 +444,7 @@ export function ResultsView({
   // On a family plan neither the paywall nor the loyalty card is shown.
   const familyPlate =
     familyActive && family ? <FamilyPlate family={family} opening={!letters && !clean && !error} /> : null;
-  const loyaltyCard = loyalty?.enabled && !familyActive ? (
+  const loyaltyCard = loyalty?.enabled && !familyLoading && !familyActive ? (
     <LoyaltyCard stamps={loyalty.freePass ? 3 : loyalty.stamps} />
   ) : null;
 

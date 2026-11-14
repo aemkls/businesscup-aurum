@@ -26,7 +26,8 @@ const listeners = new Set<() => void>();
 export function refreshFamily(): Promise<void> {
   started = true;
   const mine = ++seq;
-  return fetch("/api/family", { cache: "no-store" })
+  // Never wait for ever: without an answer the page shows the normal paywall.
+  return fetch("/api/family", { cache: "no-store", signal: AbortSignal.timeout(8000) })
     .then((r) => r.json())
     .catch(() => null)
     .then((data: Partial<FamilyInfo> | null) => {

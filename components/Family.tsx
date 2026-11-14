@@ -51,7 +51,7 @@ async function postJson(url: string): Promise<{ ok: boolean; data: Record<string
  */
 export function FamilyPlate({ family, opening }: { family: FamilyInfo; opening: boolean }) {
   const [link, setLink] = useState("");
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"" | "copied" | "select">("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const full = family.devices >= family.maxDevices;
@@ -59,7 +59,7 @@ export function FamilyPlate({ family, opening }: { family: FamilyInfo; opening: 
   async function addMember() {
     setBusy(true);
     setError("");
-    setCopied(false);
+    setCopied("");
     const { ok, data } = await postJson("/api/family/invite").catch(() => ({ ok: false, data: {} as Record<string, unknown> }));
     if (ok && typeof data.url === "string") setLink(data.url);
     else setError(typeof data.error === "string" ? data.error : "Could not make an invite link.");
@@ -79,15 +79,25 @@ export function FamilyPlate({ family, opening }: { family: FamilyInfo; opening: 
   }
 
   async function copy() {
+    let done = false;
     try {
-      await navigator.clipboard.writeText(link);
+      // Some browsers never answer a clipboard request without permission.
+      await Promise.race([
+        navigator.clipboard.writeText(link),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 1500)),
+      ]);
+      done = true;
     } catch {
-      // No clipboard access (e.g. an embedded preview): select it for Ctrl+C.
+      // Older or embedded browsers: copy the selected text instead.
       const input = document.getElementById("family-invite-link") as HTMLInputElement | null;
       input?.select();
-      document.execCommand?.("copy");
+      try {
+        done = document.execCommand("copy");
+      } catch {
+        done = false;
+      }
     }
-    setCopied(true);
+    setCopied(done ? "copied" : "select");
   }
 
   return (
@@ -151,9 +161,14 @@ export function FamilyPlate({ family, opening }: { family: FamilyInfo; opening: 
               className="h-10 min-w-0 flex-1 rounded-full border border-rule bg-paper px-4 font-mono text-fine text-bill-text outline-none focus:border-action"
             />
             <button type="button" onClick={copy} className={SMALL_BUTTON}>
-              {copied ? "Copied" : "Copy link"}
+              {copied === "copied" ? "Copied" : "Copy link"}
             </button>
           </div>
+          {copied === "select" && (
+            <p className="mt-1 text-fine text-ink-muted">
+              The link is selected. Press Ctrl+C (⌘C on a Mac) to copy it.
+            </p>
+          )}
         </div>
       )}
       {error && (
