@@ -116,6 +116,19 @@ pen; everything else stays calm.
   checkout where the user confirms the same card. The server decides; the
   stamps live in a signed cookie, the redemption marks in Stripe metadata.
   Off without `LOYALTY_SECRET` or in demo mode.
+- **Family plan: $79/year, unlimited cases for your household.** The second
+  option under the $19 button ("Cancel anytime. Up to 5 devices.") with "I
+  have a family plan" next to it. Bought through Stripe Checkout in
+  subscription mode; back on `/results?family_session=…` the plan is put on
+  the browser ("Family plan active. Every case is unlocked."). On a device
+  with an active plan the paywall and the loyalty card are replaced by a
+  "Family plan active" plate (devices "2 of 5"), and the letters of every case
+  open at once. The buyer's devices can "Add a family member" (a one-time
+  link for 7 days, `/family/join`, Copy link) and "Manage subscription"
+  (Stripe's portal). "I have a family plan" restores it with the same card in
+  a $0 card check, without using a device slot. A canceled or unpaid plan
+  closes access at once. Off without `STRIPE_FAMILY_PRICE_ID`,
+  `LOYALTY_SECRET` or `STRIPE_SECRET_KEY`.
 - Personal details (name, address, phone or email, hospital account number,
   member ID) are filled into the letters in the browser and stored only in
   `localStorage`. Printing shows only the letters, one per page.

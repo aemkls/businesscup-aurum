@@ -63,7 +63,8 @@ npm run lint
 | `GEMINI_MODEL` | no | Model tried first. Default order: `gemini-3.5-flash`, `gemini-3.1-flash-lite`, then the `-latest` aliases. |
 | `STRIPE_SECRET_KEY` | no | Stripe **test** key `sk_test_...`. Without it the unlock runs in demo mode (free). With it, one payment opens one bill: the bill's hash is stored in the PaymentIntent metadata (`lib/caseHash.ts`, `unlockPaidCase` in `lib/payments.ts`). |
 | `STRIPE_PRICE_ID` | no | A Price from the Stripe dashboard. Without it Checkout charges an inline $19. |
-| `LOYALTY_SECRET` | no | Signs the loyalty card cookie (`openssl rand -hex 32`). Without it, or without `STRIPE_SECRET_KEY`, the loyalty card is off. |
+| `LOYALTY_SECRET` | no | Signs the loyalty card and family plan cookies (`openssl rand -hex 32`). Without it, or without `STRIPE_SECRET_KEY`, both are off. |
+| `STRIPE_FAMILY_PRICE_ID` | no | The family plan's yearly Price (`price_...`, $79/year). Without it the family plan is off and not shown. |
 
 ## Loyalty card: every 4th case is free
 
@@ -76,6 +77,31 @@ PaymentIntents carries `metadata.loyalty_redeemed`, and that the confirmed
 card has the same fingerprint as all 3 payments. Then it marks the 3
 PaymentIntents as redeemed in Stripe, empties the card and issues a signed
 free pass that `/api/letters` accepts once. Logic and tests: `lib/loyalty.ts`.
+
+## Family plan: $79 a year, unlimited cases
+
+Again no accounts and no database. The plan lives in Stripe: a Checkout
+subscription (`subscription_data.metadata.family_plan = "1"`), the device
+count and used invite links in the Subscription's metadata, and the card
+fingerprint in the Customer's metadata (`card_fp`). Each device holds an
+httpOnly cookie `cb_family`, signed like the loyalty cookie but with
+`purpose: "family"` inside the signed data, so the two can never be swapped.
+
+- **Access:** `/api/letters` checks, in order: the family plan (asks Stripe for
+  the subscription on every request: only `active` or `trialing` opens a
+  case), a paid $19 session bound to the bill, the loyalty card's free pass,
+  otherwise 402. A canceled or unpaid plan closes at once.
+- **Family members:** the buyer makes a one-time invite link (signed,
+  `purpose: "family-invite"`, 7 days) at `/family/join`; up to 5 devices.
+- **Restore:** "I have a family plan" is a $0 Stripe card check; the server
+  finds the Customer by the card fingerprint (Stripe search, which can take a
+  minute to see a new plan) and does not use a device slot.
+- **Manage:** Stripe's billing portal (cancel, change the card), for the
+  buyer's devices only.
+
+Logic and tests: `lib/family.ts`, `lib/lettersAccess.ts`. In test mode every
+4242 card has the same fingerprint, so restoring with 4242 finds anyone's
+test plan; real cards do not share fingerprints.
 
 ## Try the upload path
 
@@ -92,7 +118,7 @@ redeploy. Payments use Stripe Checkout in test mode: card `4242 4242 4242 4242`.
 ## Project layout
 
 ```
-app/              pages (landing, check, results, case) and API routes (analyze, checkout, letters, loyalty)
+app/              pages (landing, check, results, case, family/join) and API routes (analyze, checkout, letters, loyalty, family)
 components/       client components; components/results/ holds the results tabs
 components/ui.tsx buttons, bands, cards and chips from docs/DESIGN.md
 lib/engine/       deterministic rules + tests (all dollar amounts come from here)
