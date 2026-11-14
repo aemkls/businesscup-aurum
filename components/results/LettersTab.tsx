@@ -24,6 +24,7 @@ export function LettersTab({
   loyaltyCard = null,
   familyOffer = null,
   familyOpening = false,
+  onFamilyRetry,
   notice = null,
   error,
   onPayLess,
@@ -38,6 +39,8 @@ export function LettersTab({
   familyOffer?: React.ReactNode;
   /** On a family plan the letters open by themselves: no offer, just wait. */
   familyOpening?: boolean;
+  /** Try the letters again after a failed attempt on a family plan. */
+  onFamilyRetry?: () => void;
   /** A short line above the offer, e.g. the last payment was for another bill. */
   notice?: React.ReactNode;
   error: string;
@@ -62,11 +65,19 @@ export function LettersTab({
   if (!letters && familyOpening) {
     return (
       <div>
-        <h2 className="text-tagline font-bold">Opening your letters…</h2>
+        <h2 className="text-tagline font-bold">
+          {error ? "Your letters are not ready yet" : "Opening your letters…"}
+        </h2>
         <p className="mt-2 text-body text-ink-muted">
-          Your family plan covers this case. We are writing the letters now.
+          Your family plan covers this case.{" "}
+          {error ? "Writing the letters did not work this time." : "We are writing the letters now."}
         </p>
-        {error && <div className="mt-4"><ErrorNote>{error}</ErrorNote></div>}
+        {error && (
+          <div className="mt-4 space-y-3">
+            <ErrorNote>{error}</ErrorNote>
+            {onFamilyRetry && <Button onClick={onFamilyRetry}>Try again</Button>}
+          </div>
+        )}
       </div>
     );
   }

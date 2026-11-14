@@ -50,7 +50,10 @@ async function fetchLetters(saved: StoredCase, sessionId: string | null): Promis
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new LettersError(data.error ?? "Could not prepare your documents.", data.code);
+    throw new LettersError(
+      data.error ?? "We couldn't prepare your letters just now. Please try again.",
+      data.code,
+    );
   }
   return data.letters as CaseLetters;
 }
@@ -258,21 +261,38 @@ export function ResultsView({
     void finishRestore(familyRestore);
   }, [familyRestore, finishRestore]);
 
-  // On an active family plan every case opens without a payment: fetch the
-  // letters for this case (the server checks the plan with Stripe again).
+  /**
+   * On an active family plan every case opens without a payment: fetch the
+   * letters for this case (the server checks the plan with Stripe again). A
+   * failed attempt is retried once; then the user gets "Try again".
+   */
+  const openFamilyLetters = useCallback((target: StoredCase) => {
+    familyOpened.current = target.createdAt;
+    setFailure(null);
+    const attempt = (retries: number): Promise<void> =>
+      fetchLetters(target, null)
+        .then((letters) => saveCase({ ...target, letters }))
+        .catch(async (e: Error) => {
+          // 402: the plan ended since the page loaded; show the paywall again.
+          if (e instanceof LettersError && e.code) {
+            void refreshFamily();
+            return;
+          }
+          if (retries > 0) {
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+            return attempt(retries - 1);
+          }
+          setFailure({ key: target.createdAt, message: e.message });
+        });
+    void attempt(1);
+  }, []);
+
   useEffect(() => {
     if (!familyActive || !saved || saved.letters || saved.result.findings.length === 0) return;
     if (sessionId || loyaltySession) return; // those returns fetch the letters themselves
     if (familyOpened.current === saved.createdAt) return;
-    familyOpened.current = saved.createdAt;
-    fetchLetters(saved, null)
-      .then((letters) => saveCase({ ...saved, letters }))
-      .catch((e: Error) => {
-        // 402: the plan ended since the page loaded; show the paywall again.
-        if (e instanceof LettersError && e.code) void refreshFamily();
-        else setFailure({ key: saved.createdAt, message: e.message });
-      });
-  }, [familyActive, saved, sessionId, loyaltySession]);
+    openFamilyLetters(saved);
+  }, [familyActive, saved, sessionId, loyaltySession, openFamilyLetters]);
 
   async function startFamily(path: "/api/family/checkout" | "/api/family/restore/start") {
     setStarting(true);
@@ -567,6 +587,11 @@ export function ResultsView({
             {error && active !== "letters" && (
               <div className="mt-6 max-w-[520px]">
                 <ErrorNote>{error}</ErrorNote>
+                {familyActive && !letters && (
+                  <TextButton onClick={() => openFamilyLetters(saved)} className="mt-2">
+                    Try again
+                  </TextButton>
+                )}
               </div>
             )}
             <Notes saved={saved} />
@@ -621,6 +646,7 @@ export function ResultsView({
                   loyaltyCard={loyaltyCard}
                   familyOffer={familyOffer}
                   familyOpening={familyActive}
+                  onFamilyRetry={() => openFamilyLetters(saved)}
                   notice={paywallNote}
                   error={error}
                   onPayLess={() => go("pay-less")}
