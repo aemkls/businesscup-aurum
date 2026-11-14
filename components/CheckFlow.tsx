@@ -441,10 +441,10 @@ function FileField({
         setOver(false);
         onChange(e.dataTransfer.files?.[0] ?? null);
       }}
-      className="paper-shadow block cursor-pointer"
+      className="paper-shadow -mx-4 block cursor-pointer sm:mx-0"
     >
       <span
-        className={`paper flex min-h-[220px] flex-col items-center justify-center rounded-[4px] border-2 border-dashed p-6 text-center ${
+        className={`paper flex min-h-[220px] flex-col items-center justify-center border-2 border-dashed p-6 text-center sm:rounded-[4px] ${
           over ? "border-action" : file ? "border-rule" : "border-rule hover:border-action"
         }`}
       >
@@ -489,8 +489,8 @@ function FileField({
 
 function DocumentPreview({ title, text }: { title: string; text: string }) {
   return (
-    <details className="paper-shadow">
-      <summary className="paper cursor-pointer rounded-[4px] px-5 py-4 text-body font-semibold text-ink">
+    <details className="paper-shadow -mx-4 sm:mx-0">
+      <summary className="paper cursor-pointer px-5 py-4 text-body font-semibold text-ink sm:rounded-[4px]">
         {title}
       </summary>
       <pre className="paper overflow-x-auto px-5 pb-5 font-mono text-fine leading-relaxed text-bill-text">
