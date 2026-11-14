@@ -22,6 +22,8 @@ export function LettersTab({
   free = false,
   payInstead = null,
   loyaltyCard = null,
+  familyOffer = null,
+  familyOpening = false,
   notice = null,
   error,
   onPayLess,
@@ -32,6 +34,10 @@ export function LettersTab({
   free?: boolean;
   payInstead?: React.ReactNode;
   loyaltyCard?: React.ReactNode;
+  /** The family plan as the second option under the $19 button. */
+  familyOffer?: React.ReactNode;
+  /** On a family plan the letters open by themselves: no offer, just wait. */
+  familyOpening?: boolean;
   /** A short line above the offer, e.g. the last payment was for another bill. */
   notice?: React.ReactNode;
   error: string;
@@ -49,6 +55,18 @@ export function LettersTab({
         <TextButton onClick={onPayLess} className="mt-4 text-body">
           Check whether the hospital can reduce the bill
         </TextButton>
+      </div>
+    );
+  }
+
+  if (!letters && familyOpening) {
+    return (
+      <div>
+        <h2 className="text-tagline font-bold">Opening your letters…</h2>
+        <p className="mt-2 text-body text-ink-muted">
+          Your family plan covers this case. We are writing the letters now.
+        </p>
+        {error && <div className="mt-4"><ErrorNote>{error}</ErrorNote></div>}
       </div>
     );
   }
@@ -76,6 +94,7 @@ export function LettersTab({
               : "$19 once, no subscription. Stripe test mode: card "}
             <span className="font-mono">4242 4242 4242 4242</span>, any future date, any CVC.
           </p>
+          {familyOffer && <div className="mt-4">{familyOffer}</div>}
           {loyaltyCard && <div className="mt-4">{loyaltyCard}</div>}
         </LockedPreview>
         {error && <ErrorNote>{error}</ErrorNote>}

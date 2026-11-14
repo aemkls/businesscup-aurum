@@ -11,6 +11,8 @@ function ResultsFromUrl() {
     <ResultsView
       sessionId={params.get("session_id")}
       loyaltySession={params.get("loyalty_session")}
+      familySession={params.get("family_session")}
+      familyRestore={params.get("family_restore")}
       tab={params.get("tab")}
       finding={params.get("finding")}
     />

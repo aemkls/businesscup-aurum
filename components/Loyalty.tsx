@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useSyncExternalStore } from "react";
+import { useFamily } from "@/lib/familyClient";
 import { useLoyalty } from "@/lib/loyaltyClient";
 
 export const LOYALTY_TERMS =
@@ -79,7 +80,7 @@ export function LoyaltyCard({ stamps, className = "" }: { stamps: number; classN
 
 const NOTICE_KEY = "claimback.loyaltyNotice.v2";
 /** Back from Stripe: the stamp toast and the letters come first, no dialog. */
-const RETURN_FROM_PAYMENT = /[?&](session_id|loyalty_session)=/;
+const RETURN_FROM_PAYMENT = /[?&](session_id|loyalty_session|family_session|family_restore)=/;
 
 const noticeListeners = new Set<() => void>();
 let noticeDismissed = false; // remembered for this page view if storage is blocked
@@ -89,7 +90,10 @@ function noticeSeen(): boolean {
   if (noticeDismissed) return true;
   // Decided on the URL the page loaded with, so the dialog does not pop up
   // later when the results page drops session_id from the URL.
-  returnedFromPayment ??= RETURN_FROM_PAYMENT.test(window.location.search);
+  // The family invite page is about joining, not about the loyalty card.
+  returnedFromPayment ??=
+    RETURN_FROM_PAYMENT.test(window.location.search) ||
+    window.location.pathname.startsWith("/family");
   if (returnedFromPayment) return true;
   try {
     return window.localStorage.getItem(NOTICE_KEY) === "1";
@@ -115,14 +119,18 @@ function dismissNotice() {
 
 /**
  * First visit: a dialog about the loyalty card, once, until it is closed.
- * Not shown when the loyalty card is off, or on the return from a payment.
+ * Not shown when the loyalty card is off, on the return from a payment, on
+ * the family invite page, or to a device on a family plan.
  */
 export function LoyaltyNotice() {
   const loyalty = useLoyalty();
+  const family = useFamily();
   // The server render counts as seen, so nothing flashes before hydration.
   const seen = useSyncExternalStore(subscribeNotice, noticeSeen, () => true);
 
-  if (!loyalty?.enabled || seen) return null;
+  // Not for a device on a family plan (cases are unlocked anyway); wait for
+  // both answers so it never flashes and disappears.
+  if (!loyalty?.enabled || seen || !family || family.active) return null;
   return <LoyaltyDialog onClose={dismissNotice} />;
 }
 

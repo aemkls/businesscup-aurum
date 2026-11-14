@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { saveCase, useCase, type StoredCase } from "@/lib/caseStore";
 import { usd } from "@/lib/engine/money";
+import { refreshFamily, useFamily } from "@/lib/familyClient";
 import { refreshLoyalty, useLoyalty } from "@/lib/loyaltyClient";
 import type { CaseLetters } from "@/lib/types";
 import { AssistanceCheck } from "./AssistanceCheck";
@@ -14,6 +15,7 @@ import { SHORT_LABEL } from "./results/findingLabels";
 import { LettersTab } from "./results/LettersTab";
 import { TabPanel, Tabs, type TabItem } from "./results/Tabs";
 import { AuditedBill } from "./AuditedBill";
+import { FamilyOffer, FamilyPlate } from "./Family";
 import { LoyaltyCard, Toast } from "./Loyalty";
 import { NextSteps } from "./NextSteps";
 import { Button, ButtonLink, ErrorNote, Section, TextButton } from "./ui";
@@ -56,6 +58,9 @@ async function fetchLetters(saved: StoredCase, sessionId: string | null): Promis
 const OTHER_CASE_NOTE = "Your last payment unlocked a different bill. This one is a new case.";
 
 const FREE_UNLOCKED = "Your free case is unlocked. Your loyalty card starts again.";
+const FAMILY_ACTIVE = "Family plan active. Every case is unlocked.";
+const FAMILY_RESTORED = "Family plan active on this device. Every case is unlocked.";
+const FAMILY_RETRY = "If you bought it just now, try again in a minute.";
 
 /** What to tell the user after a payment stamped (or did not stamp) the card. */
 function stampMessage(data: { outcome?: string; stamps?: number }): string {
@@ -74,18 +79,26 @@ function stampMessage(data: { outcome?: string; stamps?: number }): string {
 export function ResultsView({
   sessionId,
   loyaltySession,
+  familySession,
+  familyRestore,
   tab,
   finding,
 }: {
   sessionId: string | null;
   /** Back from the loyalty card's $0 card check. */
   loyaltySession: string | null;
+  /** Back from the family plan subscription checkout. */
+  familySession: string | null;
+  /** Back from "I have a family plan" ($0 card check). */
+  familyRestore: string | null;
   tab: string | null;
   finding: string | null;
 }) {
   const router = useRouter();
   const saved = useCase();
   const loyalty = useLoyalty();
+  const family = useFamily();
+  const familyActive = Boolean(family?.enabled && family.active);
   // A failure belongs to the case it happened on: a new case starts clean.
   const caseKey = saved ? saved.createdAt : null;
   const [failure, setFailure] = useState<{
@@ -106,6 +119,12 @@ export function ResultsView({
   const requested = useRef<string | null>(null);
   const stamped = useRef<string | null>(null);
   const redeemRequested = useRef<string | null>(null);
+  const familyActivated = useRef<string | null>(null);
+  const familyRestored = useRef<string | null>(null);
+  const familyOpened = useRef<string | null>(null);
+  /** "I have a family plan": checking the card, or not found yet (the id to try again). */
+  const [restoring, setRestoring] = useState(false);
+  const [restoreRetry, setRestoreRetry] = useState<{ id: string; message: string } | null>(null);
   const active: TabId = isTab(tab) ? tab : "found";
 
   const returning =
@@ -179,6 +198,98 @@ export function ResultsView({
       });
   }, [sessionId, saved, router]);
 
+  // Back from the family plan checkout: the server checks the subscription
+  // with Stripe and puts the plan on this browser. The letters then open by
+  // themselves (below).
+  useEffect(() => {
+    if (!familySession || familyActivated.current === familySession) return;
+    familyActivated.current = familySession;
+    (async () => {
+      const response = await fetch("/api/family/activate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ sessionId: familySession }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error ?? "Could not confirm your family plan.");
+      await refreshFamily();
+      setToast(FAMILY_ACTIVE);
+    })()
+      .catch((e: Error) => setFailure({ key: caseKey, message: e.message }))
+      .finally(() => router.replace("/results?tab=letters"));
+  }, [familySession, caseKey, router]);
+
+  const finishRestore = useCallback(
+    async (id: string) => {
+      setRestoring(true);
+      setRestoreRetry(null);
+      try {
+        const response = await fetch("/api/family/restore/finish", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ setupSessionId: id }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (response.ok) {
+          await refreshFamily();
+          setToast(FAMILY_RESTORED);
+          router.replace("/results?tab=letters");
+        } else if (data.retry) {
+          // Stripe's search may not see a plan bought a minute ago yet.
+          setRestoreRetry({ id, message: data.error ?? "We couldn't check your card." });
+        } else {
+          setFailure({ key: caseKey, message: data.error ?? "We couldn't check your card." });
+          router.replace("/results?tab=letters");
+        }
+      } catch {
+        setRestoreRetry({ id, message: "We couldn't reach the server." });
+      }
+      setRestoring(false);
+    },
+    [caseKey, router],
+  );
+
+  // Back from "I have a family plan".
+  useEffect(() => {
+    if (!familyRestore || familyRestored.current === familyRestore) return;
+    familyRestored.current = familyRestore;
+    void finishRestore(familyRestore);
+  }, [familyRestore, finishRestore]);
+
+  // On an active family plan every case opens without a payment: fetch the
+  // letters for this case (the server checks the plan with Stripe again).
+  useEffect(() => {
+    if (!familyActive || !saved || saved.letters || saved.result.findings.length === 0) return;
+    if (sessionId || loyaltySession) return; // those returns fetch the letters themselves
+    if (familyOpened.current === saved.createdAt) return;
+    familyOpened.current = saved.createdAt;
+    fetchLetters(saved, null)
+      .then((letters) => saveCase({ ...saved, letters }))
+      .catch((e: Error) => {
+        // 402: the plan ended since the page loaded; show the paywall again.
+        if (e instanceof LettersError && e.code) void refreshFamily();
+        else setFailure({ key: saved.createdAt, message: e.message });
+      });
+  }, [familyActive, saved, sessionId, loyaltySession]);
+
+  async function startFamily(path: "/api/family/checkout" | "/api/family/restore/start") {
+    setStarting(true);
+    setError("");
+    setRestoreRetry(null);
+    try {
+      const response = await fetch(path, { method: "POST" });
+      const data = await response.json().catch(() => ({}));
+      if (data.url) {
+        window.location.href = data.url as string;
+        return;
+      }
+      throw new Error(data.error ?? "Could not start the checkout.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong.");
+    }
+    setStarting(false);
+  }
+
   /** Tabs live in the URL so Back and shared links work. */
   function go(next: TabId, findingId?: string | null) {
     const query = new URLSearchParams({ tab: next });
@@ -234,6 +345,12 @@ export function ResultsView({
     setStarting(false);
   }
 
+  const toastRegion = (
+    <div role="status" aria-live="polite">
+      {toast && <Toast message={toast} onClose={closeToast} />}
+    </div>
+  );
+
   if (saved === undefined) {
     return (
       <Section>
@@ -244,6 +361,7 @@ export function ResultsView({
   if (saved === null) {
     return (
       <Section>
+        {toastRegion}
         <div className="max-w-[640px]">
           <h1 className="text-section-sm font-bold md:text-section">No case in this browser yet</h1>
           <p className="mt-4 text-body text-ink-muted">
@@ -268,7 +386,7 @@ export function ResultsView({
     .filter((f) => f.confidence === "low")
     .reduce((total, f) => total + f.amount, 0);
 
-  const busy = starting || returning || redeeming;
+  const busy = starting || returning || redeeming || restoring || Boolean(familySession);
   const unlockButton = (
     <Button onClick={free ? unlockFree : unlock} disabled={busy}>
       {returning
@@ -294,7 +412,36 @@ export function ResultsView({
       {OTHER_CASE_NOTE}
     </p>
   ) : null;
-  const loyaltyCard = loyalty?.enabled ? (
+  const familyOffer =
+    family?.enabled && !familyActive ? (
+      <FamilyOffer
+        busy={busy}
+        onBuy={() => void startFamily("/api/family/checkout")}
+        onRestore={() => void startFamily("/api/family/restore/start")}
+      />
+    ) : null;
+  const familyNote = restoring ? (
+    <p className="border-l-2 border-action pl-3 text-caption text-ink">Checking your card…</p>
+  ) : restoreRetry ? (
+    <div className="border-l-2 border-action pl-3 text-caption text-ink">
+      <p className="font-semibold">{restoreRetry.message}</p>
+      <p className="text-ink-muted">{FAMILY_RETRY}</p>
+      <TextButton onClick={() => void finishRestore(restoreRetry.id)} className="mt-1">
+        Try again
+      </TextButton>
+    </div>
+  ) : null;
+  const paywallNote =
+    otherCaseNote || familyNote ? (
+      <div className="space-y-3">
+        {familyNote}
+        {otherCaseNote}
+      </div>
+    ) : null;
+  // On a family plan neither the paywall nor the loyalty card is shown.
+  const familyPlate =
+    familyActive && family ? <FamilyPlate family={family} opening={!letters && !clean && !error} /> : null;
+  const loyaltyCard = loyalty?.enabled && !familyActive ? (
     <LoyaltyCard stamps={loyalty.freePass ? 3 : loyalty.stamps} />
   ) : null;
 
@@ -350,30 +497,36 @@ export function ResultsView({
               </>
             )}
 
-            {!clean && !letters && otherCaseNote && (
-              <div className="mt-8 max-w-[520px]">{otherCaseNote}</div>
+            {!clean && !letters && !familyActive && paywallNote && (
+              <div className="mt-8 max-w-[520px]">{paywallNote}</div>
             )}
-            <div
-              className={`flex flex-wrap items-center gap-4 ${
-                !clean && !letters && otherCaseNote ? "mt-4" : "mt-8"
-              }`}
-            >
-              {clean ? (
-                <Button onClick={() => go("pay-less")}>See if you can pay less</Button>
-              ) : letters ? (
-                <Button onClick={() => go("letters")}>Send your letters</Button>
-              ) : (
-                <>
-                  {unlockButton}
-                  <span className="text-caption text-ink-muted">
-                    {free
-                      ? "Letters, appeal and call script. Free with your loyalty card."
-                      : "Letters, appeal and call script. $19 once."}
-                  </span>
-                  {payInstead}
-                </>
-              )}
-            </div>
+            {(clean || letters || !familyActive) && (
+              <div
+                className={`flex flex-wrap items-center gap-4 ${
+                  !clean && !letters && paywallNote ? "mt-4" : "mt-8"
+                }`}
+              >
+                {clean ? (
+                  <Button onClick={() => go("pay-less")}>See if you can pay less</Button>
+                ) : letters ? (
+                  <Button onClick={() => go("letters")}>Send your letters</Button>
+                ) : (
+                  <>
+                    {unlockButton}
+                    <span className="text-caption text-ink-muted">
+                      {free
+                        ? "Letters, appeal and call script. Free with your loyalty card."
+                        : "Letters, appeal and call script. $19 once."}
+                    </span>
+                    {payInstead}
+                  </>
+                )}
+              </div>
+            )}
+            {familyPlate && <div className="mt-6 max-w-[520px]">{familyPlate}</div>}
+            {!clean && !letters && !familyActive && familyOffer && (
+              <div className="mt-4 max-w-[520px]">{familyOffer}</div>
+            )}
             {!clean && !letters && loyaltyCard && (
               <div className="mt-4 max-w-[520px]">{loyaltyCard}</div>
             )}
@@ -463,7 +616,9 @@ export function ResultsView({
                   free={free}
                   payInstead={payInstead}
                   loyaltyCard={loyaltyCard}
-                  notice={otherCaseNote}
+                  familyOffer={familyOffer}
+                  familyOpening={familyActive}
+                  notice={paywallNote}
                   error={error}
                   onPayLess={() => go("pay-less")}
                 />
@@ -472,9 +627,7 @@ export function ResultsView({
             </TabPanel>
           </div>
 
-          <div role="status" aria-live="polite">
-            {toast && <Toast message={toast} onClose={closeToast} />}
-          </div>
+          {toastRegion}
 
           <div className="no-print mt-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             {!clean && (
