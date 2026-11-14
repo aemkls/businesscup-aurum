@@ -9,6 +9,9 @@ import type { AnalysisResult, Bill, Eob } from "@/lib/types";
 
 export const maxDuration = 60;
 
+/** Leave a few seconds of the 60 s function limit for the engine and the response. */
+const AI_DEADLINE_MS = 52_000;
+
 const MAX_BYTES = 10 * 1024 * 1024;
 const ALLOWED_TYPES = new Set([
   "image/jpeg",
@@ -44,6 +47,7 @@ async function readUpload(value: FormDataEntryValue | null): Promise<DocumentInp
  * AI rewords the explanations. Only the engine produces amounts.
  */
 export async function POST(request: Request) {
+  const started = Date.now();
   let form: FormData;
   try {
     form = await request.formData();
@@ -102,7 +106,7 @@ export async function POST(request: Request) {
 
   const engineFindings = runEngine(bill, eob, plan.data);
   const explained = aiExtraction
-    ? await explainFindings(engineFindings, 15_000)
+    ? await explainFindings(engineFindings, Math.min(20_000, AI_DEADLINE_MS - (Date.now() - started)))
     : { findings: engineFindings, aiWritten: false };
 
   const result: AnalysisResult = {
