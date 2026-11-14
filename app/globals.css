@@ -206,12 +206,40 @@ h2,
   }
 }
 
+/* The first-visit dialog: the page dims, the dialog fades in and grows a little. */
+.dialog-backdrop {
+  animation: fade-in 250ms ease-out both;
+}
+.dialog-panel {
+  animation: dialog-in 250ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mark-marker,
   .mark-stroke,
   .pen-strike,
   .mark-write,
-  .mark-stamp {
+  .mark-stamp,
+  .dialog-backdrop,
+  .dialog-panel {
     animation: none;
   }
   .press {

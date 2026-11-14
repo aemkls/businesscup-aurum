@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { useLoyalty } from "@/lib/loyaltyClient";
 
 export const LOYALTY_TERMS =
@@ -78,12 +78,19 @@ export function LoyaltyCard({ stamps, className = "" }: { stamps: number; classN
 }
 
 const NOTICE_KEY = "claimback.loyaltyNotice.v1";
+/** Back from Stripe: the stamp toast and the letters come first, no dialog. */
+const RETURN_FROM_PAYMENT = /[?&](session_id|loyalty_session)=/;
 
 const noticeListeners = new Set<() => void>();
 let noticeDismissed = false; // remembered for this page view if storage is blocked
+let returnedFromPayment: boolean | null = null; // decided once per page load
 
 function noticeSeen(): boolean {
   if (noticeDismissed) return true;
+  // Decided on the URL the page loaded with, so the dialog does not pop up
+  // later when the results page drops session_id from the URL.
+  returnedFromPayment ??= RETURN_FROM_PAYMENT.test(window.location.search);
+  if (returnedFromPayment) return true;
   try {
     return window.localStorage.getItem(NOTICE_KEY) === "1";
   } catch {
@@ -106,50 +113,140 @@ function dismissNotice() {
   noticeListeners.forEach((l) => l());
 }
 
-/** First visit: a small card about the loyalty card, until "Got it". */
+/**
+ * First visit: a dialog about the loyalty card, once, until it is closed.
+ * Not shown when the loyalty card is off, or on the return from a payment.
+ */
 export function LoyaltyNotice() {
   const loyalty = useLoyalty();
   // The server render counts as seen, so nothing flashes before hydration.
   const seen = useSyncExternalStore(subscribeNotice, noticeSeen, () => true);
 
   if (!loyalty?.enabled || seen) return null;
+  return <LoyaltyDialog onClose={dismissNotice} />;
+}
+
+const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
+function LoyaltyDialog({ onClose }: { onClose: () => void }) {
+  const panel = useRef<HTMLDivElement>(null);
+  const gotIt = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    gotIt.current?.focus();
+
+    // The page under the dialog does not scroll; keep its width steady.
+    const html = document.documentElement;
+    const scrollbar = window.innerWidth - html.clientWidth;
+    const before = { overflow: html.style.overflow, padding: document.body.style.paddingRight };
+    html.style.overflow = "hidden";
+    if (scrollbar > 0) document.body.style.paddingRight = `${scrollbar}px`;
+
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab" || !panel.current) return;
+      // Tab and Shift+Tab cycle inside the dialog.
+      const items = [...panel.current.querySelectorAll<HTMLElement>(FOCUSABLE)];
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      const inside = panel.current.contains(active);
+      if (event.shiftKey && (active === first || !inside)) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (active === last || !inside)) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+    document.addEventListener("keydown", onKey);
+
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      html.style.overflow = before.overflow;
+      document.body.style.paddingRight = before.padding;
+      // Focus goes back to the page: where it was, or the top of the document.
+      if (previous && previous !== document.body && previous.isConnected) previous.focus();
+      else if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    };
+  }, [onClose]);
 
   return (
-    <aside
-      aria-label="Loyalty card"
-      className="no-print fixed inset-x-4 bottom-4 z-40 mx-auto max-w-[400px] sm:inset-x-auto sm:right-6 sm:bottom-6"
-    >
-      <div className="paper-shadow">
-        <div className="rounded-[14px] bg-paper px-5 py-4">
-          <div className="flex items-start gap-3">
-            <span
-              aria-hidden="true"
-              className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-action font-mono text-[11px] font-semibold text-action"
-            >
+    <div className="no-print fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div aria-hidden="true" onClick={onClose} className="dialog-backdrop absolute inset-0 bg-ink/60" />
+      <div
+        ref={panel}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="loyalty-dialog-title"
+        aria-describedby="loyalty-dialog-text"
+        className="dialog-panel relative max-h-[calc(100dvh-32px)] w-full max-w-[480px] overflow-y-auto rounded-[14px] bg-paper px-6 pb-6 pt-8 text-ink shadow-[0_24px_64px_rgb(19_33_58/0.35)] sm:px-8 sm:pb-8"
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute right-3 top-3 flex size-9 items-center justify-center rounded-full text-[22px] leading-none text-ink-muted hover:bg-desk hover:text-ink"
+        >
+          ×
+        </button>
+
+        <ol
+          aria-label="Loyalty card: 3 paid cases, then the 4th is free"
+          className="flex items-start justify-center gap-3 rounded-[10px] bg-desk px-4 py-5 sm:gap-4"
+        >
+          {[1, 2, 3].map((n) => (
+            <li key={n} className="flex flex-col items-center gap-1.5">
+              <span className="flex size-12 items-center justify-center rounded-full bg-ink text-white">
+                <svg viewBox="0 0 16 16" className="size-5" aria-hidden="true">
+                  <path
+                    d="M3.5 8.5l3 3 6-7"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
+              <span className="text-fine text-ink-muted">Case {n}</span>
+            </li>
+          ))}
+          <li className="flex flex-col items-center gap-1.5">
+            <span className="flex size-12 items-center justify-center rounded-full bg-action font-mono text-[15px] font-semibold text-white ring-4 ring-action/25">
               $0
             </span>
-            <div>
-              <p className="text-caption font-semibold text-ink">
-                Loyalty card: every 4th case is free.
-              </p>
-              <p className="mt-1 text-fine text-ink-muted">
-                Pay for 3 cases with the same card in this browser, and your 4th case unlocks for
-                $0. To claim it, you confirm the same card. Nothing is charged.
-              </p>
-            </div>
-          </div>
-          <div className="mt-3 flex justify-end">
-            <button
-              type="button"
-              onClick={dismissNotice}
-              className="press rounded-full bg-action px-5 py-2 text-caption font-semibold text-white hover:bg-action-hover"
-            >
-              Got it
-            </button>
-          </div>
-        </div>
+            <span className="text-fine font-bold text-action">Free</span>
+          </li>
+        </ol>
+
+        <h2 id="loyalty-dialog-title" className="mt-6 text-[28px] font-bold leading-tight tracking-tight">
+          Every 4th case is free
+        </h2>
+        <p id="loyalty-dialog-text" className="mt-3 text-body text-ink-muted">
+          Pay for 3 cases with the same card in this browser. Your 4th case unlocks for $0: you
+          confirm the same card, nothing is charged.
+        </p>
+        <p className="mt-3 text-fine text-ink-muted">
+          Same card, same browser. Apple Pay and other wallets may not count, type your card
+          number.
+        </p>
+        <button
+          ref={gotIt}
+          type="button"
+          onClick={onClose}
+          className="press mt-6 w-full rounded-full bg-action px-6 py-3 text-body font-semibold text-white hover:bg-action-hover"
+        >
+          Got it
+        </button>
       </div>
-    </aside>
+    </div>
   );
 }
 
