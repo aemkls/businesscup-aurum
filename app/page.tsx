@@ -1,84 +1,80 @@
-import Link from "next/link";
 import { ResumeCase } from "@/components/ResumeCase";
+import { ButtonLink } from "@/components/ui";
 
 const STEPS = [
   {
     title: "Tell us your plan",
-    text: "A few numbers from your insurance card or portal: deductible, what you have paid so far, coinsurance, out-of-pocket max and copay.",
+    text: "Deductible, what you have paid this year, coinsurance, out-of-pocket max, copay.",
   },
   {
     title: "Add the bill and the EOB",
-    text: "A photo or PDF of the hospital bill and the Explanation of Benefits your insurer sent for the same visit.",
+    text: "A photo or PDF of the itemized bill and your insurer's Explanation of Benefits.",
   },
   {
     title: "See what you should not owe",
-    text: "Duplicates, wrong quantities, charges above your insurer's rate, deductible mistakes and denials you can appeal.",
+    text: "Every problem with its amount and evidence, plus the letters to get it fixed.",
   },
+];
+
+const STATS = [
+  { value: "19%", text: "of in-network claims on HealthCare.gov were denied in 2023." },
+  { value: "1 in 200", text: "denied claims is ever appealed by the patient." },
+  { value: "44%", text: "of those appeals end with the insurer reversing its decision." },
 ];
 
 export default function Home() {
   return (
-    <div>
-      <section className="max-w-3xl">
-        <p className="text-sm font-medium uppercase tracking-widest text-accent">
-          Medical bill check
-        </p>
-        <h1 className="mt-4 text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
-          Your hospital bill is probably wrong. Find out by how much.
-        </h1>
-        <p className="mt-5 text-lg leading-relaxed text-muted">
-          ClaimBack reads your bill and your insurer&apos;s EOB, checks both against the terms of
-          your own plan and shows, line by line, what you should not be paying. Then it writes the
-          dispute letter and the appeal for you.
-        </p>
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Link
-            href="/check"
-            className="rounded-lg bg-accent px-6 py-3 font-medium text-white hover:bg-accent-dark"
-          >
-            Check my bill
-          </Link>
-          <Link
-            href="/check?sample=1"
-            className="rounded-lg border border-ink/25 bg-card px-6 py-3 font-medium hover:border-ink"
-          >
-            Try with a sample bill
-          </Link>
-        </div>
-        <p className="mt-3 text-sm text-muted">
-          Free to see what we find. About two minutes, no sign-up.
-        </p>
-        <ResumeCase />
-      </section>
-
-      <section className="mt-16 grid gap-px overflow-hidden rounded-lg border border-line bg-line sm:grid-cols-3">
-        {STEPS.map((step, i) => (
-          <div key={step.title} className="bg-card p-6">
-            <p className="money text-sm text-accent">0{i + 1}</p>
-            <h2 className="mt-2 font-semibold">{step.title}</h2>
-            <p className="mt-2 text-sm leading-relaxed text-muted">{step.text}</p>
+    <>
+      <section className="bg-tile-dark px-4 py-12 text-on-dark sm:px-6 md:py-16">
+        <div className="rise mx-auto max-w-[980px] text-center">
+          <h1 className="text-hero-sm font-semibold md:text-hero">
+            Your hospital bill is probably wrong.
+            <br className="hidden sm:block" /> Find out by how much.
+          </h1>
+          <p className="mx-auto mt-4 max-w-[600px] text-tagline font-normal text-on-dark-muted">
+            We check your bill and EOB against your own plan and show, line by line, what you
+            should not pay.
+          </p>
+          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <ButtonLink href="/check?sample=1" className="w-full max-w-[280px] sm:w-auto">
+              Try with a sample bill
+            </ButtonLink>
+            <ButtonLink href="/check" variant="secondaryOnDark" className="w-full max-w-[280px] sm:w-auto">
+              Check my bill
+            </ButtonLink>
           </div>
-        ))}
+          <p className="mt-4 text-caption text-on-dark-muted">About two minutes. No sign-up.</p>
+          <ResumeCase />
+        </div>
       </section>
 
-      <section className="mt-12 grid gap-6 sm:grid-cols-3">
-        <Stat value="19%" text="of in-network claims on HealthCare.gov were denied in 2023." />
-        <Stat value="1 in 200" text="denied claims is ever appealed by the patient." />
-        <Stat value="44%" text="of those appeals end with the insurer reversing its decision." />
-        <p className="text-xs text-muted sm:col-span-3">
-          Source: KFF, Claims Denials and Appeals in ACA Marketplace Plans in 2023 (published
-          January 2025).
-        </p>
+      <section className="px-4 py-10 sm:px-6">
+        <ol className="mx-auto grid max-w-[980px] gap-8 sm:grid-cols-3">
+          {STEPS.map((step, i) => (
+            <li key={step.title}>
+              <p className="money text-caption font-semibold text-ink-muted">Step {i + 1}</p>
+              <h2 className="mt-1 text-tagline font-semibold">{step.title}</h2>
+              <p className="mt-2 text-caption text-ink-muted">{step.text}</p>
+            </li>
+          ))}
+        </ol>
       </section>
-    </div>
-  );
-}
 
-function Stat({ value, text }: { value: string; text: string }) {
-  return (
-    <div className="border-l-2 border-accent pl-4">
-      <p className="money text-3xl font-semibold">{value}</p>
-      <p className="mt-1 text-sm leading-relaxed text-muted">{text}</p>
-    </div>
+      <section className="bg-parchment px-4 py-10 sm:px-6">
+        <div className="mx-auto max-w-[980px]">
+          <dl className="grid gap-8 sm:grid-cols-3">
+            {STATS.map((stat) => (
+              <div key={stat.value}>
+                <dt className="money text-section-sm font-semibold md:text-section">{stat.value}</dt>
+                <dd className="mt-2 text-caption text-ink-muted">{stat.text}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="mt-6 text-fine text-ink-muted">
+            Source: KFF, Claims Denials and Appeals in ACA Marketplace Plans in 2023 (January 2025).
+          </p>
+        </div>
+      </section>
+    </>
   );
 }
