@@ -18,3 +18,13 @@ Total: **$2,547.00**. Fair amount if everything is corrected: **$1,182.80**.
 
 This table is the answer key for `lib/engine/engine.test.ts`. The app itself
 never reads it: the numbers on screen come from the rule engine.
+
+## Downloadable documents
+
+`public/samples/` has the same case rendered as real documents, to test the
+upload path end to end: `sample-bill.pdf`, `sample-bill.jpg` (a phone-style
+photo) and `sample-eob.pdf`. Regenerate them after editing `sample.ts`:
+
+```bash
+node scripts/render-sample-docs.mjs
+```

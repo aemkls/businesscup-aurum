@@ -210,6 +210,23 @@ export function CheckFlow({ sample }: { sample: boolean }) {
             />
           </div>
         )}
+        {!sample && (
+          <p className="mt-3 text-sm text-muted">
+            No bill at hand? Download a sample and upload it here:{" "}
+            <a href="/samples/sample-bill.jpg" download className="text-accent underline">
+              bill photo
+            </a>
+            ,{" "}
+            <a href="/samples/sample-bill.pdf" download className="text-accent underline">
+              bill PDF
+            </a>
+            ,{" "}
+            <a href="/samples/sample-eob.pdf" download className="text-accent underline">
+              EOB PDF
+            </a>
+            .
+          </p>
+        )}
         <p className="mt-3 text-xs text-muted">
           Files are read in memory to run the check and are not saved on our servers.
         </p>
