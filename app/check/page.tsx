@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { CheckFlow } from "@/components/CheckFlow";
+import { Band } from "@/components/ui";
 
 function CheckFromUrl() {
   const sample = useSearchParams().get("sample") === "1";
@@ -12,7 +13,13 @@ function CheckFromUrl() {
 
 export default function CheckPage() {
   return (
-    <Suspense fallback={<p className="text-muted">Loading…</p>}>
+    <Suspense
+      fallback={
+        <Band>
+          <p className="text-ink-muted">Loading…</p>
+        </Band>
+      }
+    >
       <CheckFromUrl />
     </Suspense>
   );
