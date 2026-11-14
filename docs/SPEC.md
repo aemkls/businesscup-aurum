@@ -22,65 +22,80 @@ why, and the documents to get it fixed.
 
 ## Screens
 
+The visual language is in [`DESIGN.md`](DESIGN.md): light and dark bands,
+one action color, the dollar amount as the hero, details behind tabs.
+
 ### 1. Landing `/`
 
-- One claim: "Your hospital bill is probably wrong. Find out by how much."
-- Two actions: **Check my bill** (`/check`) and **Try with a sample bill**
-  (`/check?sample=1`).
-- "You have an open case" banner when this browser already has one.
+- Dark hero: "Your hospital bill is probably wrong. Find out by how much."
+- Primary **Try with a sample bill** (`/check?sample=1`), secondary **Check my bill**.
+- Three steps, then three KFF numbers with the source.
+- "You have an open case" line in the hero when this browser has one.
 
-### 2. Check `/check`: step 1 "Your plan"
+### 2. Check `/check`, step 1 of 2: "Your plan"
 
 | Field | Notes |
 |---|---|
 | Annual deductible | $ |
-| Deductible already paid this year | $, before this visit |
+| Deductible paid this year | $, before this visit |
 | Coinsurance | %, patient share after the deductible |
 | Out-of-pocket maximum | $ |
-| Out-of-pocket already paid this year | $, before this visit |
+| Out-of-pocket paid this year | $, before this visit |
 | Copay for this visit | $, 0 if none |
 | Network | In-network / Out-of-network |
 
-- **Fill from sample** fills the form with the sample plan.
-- The form is remembered in `localStorage`; the server validates it with zod.
+- Thin progress bar, step counter.
+- A "?" next to every field answers "Where do I find this?" (plan summary,
+  insurer portal, insurance card).
+- **Fill from sample**; the form is remembered in `localStorage`; inline
+  validation (e.g. deductible paid cannot exceed the deductible).
 
-### 3. Check `/check`: step 2 "Upload"
+### 3. Check `/check`, step 2 of 2: "Your documents"
 
-- Itemized bill, required: photo (JPG, PNG, WebP, HEIC) or PDF, up to 10 MB.
-- EOB, optional, same formats. Without it only bill-only rules run.
+- Itemized bill, required; EOB, optional. Photo (JPG, PNG, WebP, HEIC) or
+  PDF up to 10 MB, click or drag and drop.
 - Links to download a sample bill (photo, PDF) and EOB to try a real upload.
-- Files go to `POST /api/analyze` in memory and are never stored.
-- In sample mode the documents are shown as text and still go through the
-  same AI reader and rule engine.
+- While the check runs: a vertical list of steps that tick off.
+- If the AI reader is overloaded (503): a plain message, **Try again**, and
+  a link to the sample.
 
-### 4. Results `/results` (free)
+### 4. Results `/results`
 
-- Headline: **"$X likely overcharged"**, then billed / in dispute / fair amount.
-- One card per finding: type, amount, confidence **High / Medium / Low**,
-  who to contact (hospital or insurer), plain-English explanation, evidence
-  from the documents.
-- The bill line by line, with flagged lines marked.
-- Financial assistance check (household size and income, kept on the device).
-- Paywall: the dispute letter and call script are shown **blurred**. The
-  teaser is built only from data already on the page; the real documents are
-  generated on the server after payment.
+- Dark summary band: "$X likely overcharged", billed / in dispute / if
+  corrected, and one action: **Unlock my case for $19** before payment,
+  **Send your letters** after it.
+- Tabs (pill segmented control, `?tab=` in the URL, arrow keys):
+  1. **What we found**: one row per finding with amount, confidence word
+     (High / Medium / Low), who to contact and a plain explanation; evidence
+     collapsed behind "Show evidence"; "See it on your bill".
+  2. **Your bill**: the bill line by line, flagged lines marked. Selecting a
+     finding highlights its lines; clicking a flagged line selects its
+     finding (`&finding=` in the URL).
+  3. **Letters**: before payment a blurred preview and the offer; after it a
+     personal details form, then the letters with Copy, Download .txt,
+     Print / save PDF, and Download all.
+  4. **Pay less**: financial assistance screening against the 2026 federal
+     poverty guidelines; answers stay on the device.
+- Empty states: no case in this browser; no EOB (note and "Run again with
+  the EOB"); nothing found ("Your bill looks right" and the Pay less tab).
 
 ### 5. Unlock
 
 - `POST /api/checkout` creates a Stripe Checkout session in **test mode**,
   **$19 one time per bill**. Test card `4242 4242 4242 4242`.
-- Stripe redirects back to `/results?session_id=…`; `POST /api/letters`
-  checks with Stripe that the session is paid, recomputes the findings from
-  the documents and returns the dispute letter, insurer appeal and call script.
-- Without `STRIPE_SECRET_KEY` the deployment runs in demo mode and unlocks
-  without a charge.
+- Back on `/results?session_id=…`, `POST /api/letters` checks with Stripe
+  that the session is paid, recomputes the findings and only then writes the
+  letters. Without `STRIPE_SECRET_KEY` the deployment runs in demo mode.
+- Personal details (name, address, phone or email, hospital account number,
+  member ID) are filled into the letters in the browser and stored only in
+  `localStorage`. Printing shows only the letters, one per page.
 
 ### 6. My case `/case`
 
-- Case tracker stored in `localStorage`: provider, billed, in dispute.
-- Timeline of steps with due dates (send letter, file appeal, day-14 call,
-  day-30 escalation, appeal deadline), ticked off and saved locally.
-- **Add these dates to my calendar** downloads an `.ics` file with reminders.
+- Summary (provider, billed, in dispute), progress bar, timeline of steps.
+- **Mark as sent** on a letter records the date; follow-up deadlines (day 14
+  call, day 30 escalation, appeal deadline) count from that date.
+- **Add reminders to my calendar** downloads an `.ics` file with the same dates.
 
 ## Data and logic
 

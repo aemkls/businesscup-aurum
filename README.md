@@ -79,13 +79,15 @@ redeploy. Payments use Stripe Checkout in test mode: card `4242 4242 4242 4242`.
 ## Project layout
 
 ```
-app/            pages and API routes (analyze, checkout, letters)
-components/     client components (check flow, results, tracker)
-lib/engine/     deterministic rules + tests
-lib/ai/         Gemini client, extraction, rewording, number guard
-lib/letters/    letter and call-script templates
-data/samples/   synthetic sample case and its answer key
-docs/SPEC.md    product spec
+app/              pages (landing, check, results, case) and API routes (analyze, checkout, letters)
+components/       client components; components/results/ holds the results tabs
+components/ui.tsx buttons, bands, cards and chips from docs/DESIGN.md
+lib/engine/       deterministic rules + tests (all dollar amounts come from here)
+lib/ai/           Gemini client, extraction, rewording, number guard
+lib/letters/      letter templates and filling in personal details (+ tests)
+lib/tracker.ts    follow-up plan, dates counted from sending, .ics export (+ tests)
+data/samples/     synthetic sample case and its answer key
+docs/             SPEC.md (product), DESIGN.md (design system)
 ```
 
 ClaimBack is software, not a law firm. It does not give legal or medical advice.
