@@ -77,7 +77,7 @@ export function LoyaltyCard({ stamps, className = "" }: { stamps: number; classN
   );
 }
 
-const NOTICE_KEY = "claimback.loyaltyNotice.v1";
+const NOTICE_KEY = "claimback.loyaltyNotice.v2";
 /** Back from Stripe: the stamp toast and the letters come first, no dialog. */
 const RETURN_FROM_PAYMENT = /[?&](session_id|loyalty_session)=/;
 
