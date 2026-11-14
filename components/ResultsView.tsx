@@ -6,11 +6,11 @@ import { useEffect, useRef, useState } from "react";
 import { saveCase, useCase, type StoredCase } from "@/lib/caseStore";
 import { usd } from "@/lib/engine/money";
 import type { CaseLetters, Confidence, Finding } from "@/lib/types";
-import { CaseTracker } from "./CaseTracker";
+import { LockedPreview } from "./LockedPreview";
 
 const CONFIDENCE: Record<Confidence, { label: string; className: string }> = {
   high: { label: "High confidence", className: "bg-accent-soft text-accent-dark" },
-  medium: { label: "Worth checking", className: "bg-warn-soft text-warn" },
+  medium: { label: "Medium confidence", className: "bg-warn-soft text-warn" },
   low: { label: "Low confidence", className: "bg-line text-muted" },
 };
 
@@ -100,9 +100,13 @@ export function ResultsView({ sessionId }: { sessionId: string | null }) {
         </h1>
       ) : (
         <>
-          <h1 className="mt-2 text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
-            We found <span className="money text-accent">{usd(result.potentialSavings)}</span> you
-            may not owe.
+          <h1 className="mt-2 leading-tight tracking-tight">
+            <span className="money block text-5xl font-semibold text-accent sm:text-6xl">
+              {usd(result.potentialSavings)}
+            </span>
+            <span className="mt-1 block text-2xl font-semibold sm:text-3xl">
+              likely overcharged
+            </span>
           </h1>
           <dl className="mt-6 grid grid-cols-3 gap-px overflow-hidden rounded-lg border border-line bg-line text-sm">
             <Figure label="You were billed" value={usd(result.amountBilled)} />
@@ -148,8 +152,8 @@ export function ResultsView({ sessionId }: { sessionId: string | null }) {
               <li>An internal appeal letter to your insurer</li>
             )}
             <li>A call script, with what to say and what to write down</li>
-            <li>A follow-up plan with deadlines you can add to your calendar</li>
           </ul>
+          <LockedPreview result={result} />
           <div className="mt-6 flex flex-wrap items-center gap-4">
             <button
               onClick={unlock}
@@ -165,7 +169,7 @@ export function ResultsView({ sessionId }: { sessionId: string | null }) {
             <span className="text-sm text-muted">One-time payment. No subscription.</span>
           </div>
           <p className="mt-4 rounded bg-paper px-3 py-2 text-xs text-muted">
-            Demo mode: payments run in Stripe test mode. Use card{" "}
+            Test mode, no real charge. Use card{" "}
             <span className="money">4242 4242 4242 4242</span>, any future date, any CVC.
           </p>
           {error && (
@@ -189,8 +193,20 @@ export function ResultsView({ sessionId }: { sessionId: string | null }) {
               <LetterBlock title="Call script" text={letters.callScript} />
             </div>
           </section>
-          <CaseTracker saved={saved} />
         </>
+      )}
+
+      {!clean && (
+        <Link
+          href="/case"
+          className="no-print mt-10 flex items-center justify-between gap-4 rounded-lg border border-line bg-card px-5 py-4 text-sm hover:border-accent"
+        >
+          <span>
+            <span className="font-medium">My case:</span> your step-by-step follow-up plan, with
+            calendar reminders.
+          </span>
+          <span className="font-medium text-accent">Open</span>
+        </Link>
       )}
 
       <div className="no-print mt-12 flex flex-wrap gap-4 text-sm">

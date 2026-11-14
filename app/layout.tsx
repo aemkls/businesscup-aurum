@@ -19,7 +19,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <Link href="/" className="text-lg font-semibold tracking-tight">
               Claim<span className="text-accent">Back</span>
             </Link>
-            <span className="text-sm text-muted">No account. Files are never stored.</span>
+            <nav className="flex items-center gap-5 text-sm">
+              <span className="hidden text-muted sm:inline">No account. Files are never stored.</span>
+              <Link href="/case" className="font-medium hover:text-accent">
+                My case
+              </Link>
+            </nav>
           </div>
         </header>
         <main className="mx-auto w-full max-w-5xl flex-1 px-5 py-10">{children}</main>
