@@ -66,10 +66,32 @@ export function buildSteps(result: AnalysisResult, household?: Household | null)
   return steps;
 }
 
-export function dueDate(createdAt: string, dayOffset: number): Date {
-  const date = new Date(createdAt);
+export function dueDate(from: string, dayOffset: number): Date {
+  const date = new Date(from);
   date.setDate(date.getDate() + dayOffset);
   return date;
+}
+
+/**
+ * When the letters went out: the earliest date one of the "send" steps
+ * (due on day 0) was marked done, or null if nothing has been sent yet.
+ * Follow-up deadlines count from this date, not from when the case was made.
+ */
+export function sentDate(steps: TrackerStep[], done: Record<string, string>): string | null {
+  const dates = steps
+    .filter((s) => s.dayOffset === 0 && done[s.id])
+    .map((s) => done[s.id])
+    .sort();
+  return dates[0] ?? null;
+}
+
+/**
+ * Due date of a step: send steps are due when the case starts; follow-ups
+ * are due a number of days after sending, so null until something is sent.
+ */
+export function stepDueDate(step: TrackerStep, createdAt: string, sent: string | null): Date | null {
+  if (step.dayOffset === 0) return dueDate(createdAt, 0);
+  return sent ? dueDate(sent, step.dayOffset) : null;
 }
 
 const stamp = (d: Date) =>
@@ -77,15 +99,18 @@ const stamp = (d: Date) =>
 
 const escape = (s: string) => s.replace(/([,;\\])/g, "\\$1").replace(/\n/g, "\\n");
 
-/** All-day calendar events for every step, as an .ics file body. */
-export function buildIcs(createdAt: string, steps: TrackerStep[]): string {
+/**
+ * All-day calendar events for every step, as an .ics file body. `from` is
+ * the day the letters were sent (or the day the case started, if not yet).
+ */
+export function buildIcs(from: string, steps: TrackerStep[]): string {
   const events = steps.map((step) => {
-    const start = dueDate(createdAt, step.dayOffset);
-    const end = dueDate(createdAt, step.dayOffset + 1);
+    const start = dueDate(from, step.dayOffset);
+    const end = dueDate(from, step.dayOffset + 1);
     return [
       "BEGIN:VEVENT",
-      `UID:${step.id}-${stamp(new Date(createdAt))}@claimback`,
-      `DTSTAMP:${stamp(new Date(createdAt))}T000000Z`,
+      `UID:${step.id}-${stamp(new Date(from))}@claimback`,
+      `DTSTAMP:${stamp(new Date(from))}T000000Z`,
       `DTSTART;VALUE=DATE:${stamp(start)}`,
       `DTEND;VALUE=DATE:${stamp(end)}`,
       `SUMMARY:${escape(`ClaimBack: ${step.title}`)}`,
