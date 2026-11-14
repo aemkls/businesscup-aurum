@@ -3,7 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { ResultsView } from "@/components/ResultsView";
-import { Band } from "@/components/ui";
+import { Section } from "@/components/ui";
 
 function ResultsFromUrl() {
   const params = useSearchParams();
@@ -20,9 +20,9 @@ export default function ResultsPage() {
   return (
     <Suspense
       fallback={
-        <Band>
+        <Section>
           <p className="text-ink-muted">Loading your case…</p>
-        </Band>
+        </Section>
       }
     >
       <ResultsFromUrl />

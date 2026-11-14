@@ -31,13 +31,13 @@ export function LettersTab({
 
   if (result.findings.length === 0) {
     return (
-      <div className="rounded-[18px] bg-parchment p-6 sm:p-8">
-        <h2 className="text-tagline font-semibold">No dispute letters needed</h2>
-        <p className="mt-2 text-body text-ink-muted">
+      <div>
+        <h2 className="text-section-sm font-bold">No dispute letters needed</h2>
+        <p className="mt-3 text-body text-ink-muted">
           We found nothing to dispute on this bill, so there is nothing to send.
         </p>
         <TextButton onClick={onPayLess} className="mt-4 text-body">
-          Check whether the hospital can reduce the bill ›
+          Check whether the hospital can reduce the bill
         </TextButton>
       </div>
     );
@@ -46,30 +46,22 @@ export function LettersTab({
   if (!letters) {
     const toInsurer = result.findings.some((f) => f.target === "insurer");
     return (
-      <div className="space-y-8">
-        <LockedPreview result={result} />
-        <div className="rounded-[18px] bg-parchment p-6 sm:p-8">
-          <h2 className="text-tagline font-semibold">Everything you need to get this corrected</h2>
-          <ul className="mt-4 space-y-2 text-body">
-            <li>A dispute letter to the billing department, citing each error with its evidence</li>
-            {toInsurer && <li>An internal appeal letter to your insurer</li>}
+      <div className="space-y-4">
+        <LockedPreview result={result}>
+          <h2 className="text-tagline font-bold">Get the letters that fix this</h2>
+          <ul className="mt-3 space-y-1.5 text-caption">
+            <li>A dispute letter to the billing office, citing each error with its evidence</li>
+            {toInsurer && <li>An appeal letter to your insurer</li>}
             <li>A call script: what to say and what to write down</li>
-            <li>Your name, address and account numbers filled in, ready to print or copy</li>
+            <li>Your name, address and account numbers filled in</li>
           </ul>
-          <div className="mt-6 flex flex-wrap items-center gap-4">
-            {unlockButton}
-            <span className="text-caption text-ink-muted">$19 once. No subscription.</span>
-          </div>
-          <p className="mt-4 text-fine text-ink-muted">
-            Stripe test mode, no real charge: card <span className="money">4242 4242 4242 4242</span>,
-            any future date, any CVC.
+          <div className="mt-5">{unlockButton}</div>
+          <p className="mt-3 text-fine text-ink-muted">
+            $19 once, no subscription. Stripe test mode: card{" "}
+            <span className="font-mono">4242 4242 4242 4242</span>, any future date, any CVC.
           </p>
-          {error && (
-            <div className="mt-4">
-              <ErrorNote>{error}</ErrorNote>
-            </div>
-          )}
-        </div>
+        </LockedPreview>
+        {error && <ErrorNote>{error}</ErrorNote>}
       </div>
     );
   }
@@ -98,8 +90,16 @@ function UnlockedLetters({ saved }: { saved: StoredCase }) {
   const today = new Date();
   const fill = (text: string) => fillLetter(text, details ?? EMPTY_DETAILS, today);
   const docs: Doc[] = [
-    { title: "Dispute letter to the billing department", file: "dispute-letter.txt", text: letters.providerLetter },
-    { title: "Appeal letter to your insurer", file: "insurer-appeal.txt", text: letters.insurerAppeal },
+    {
+      title: "Dispute letter to the billing department",
+      file: "dispute-letter.txt",
+      text: letters.providerLetter,
+    },
+    {
+      title: "Appeal letter to your insurer",
+      file: "insurer-appeal.txt",
+      text: letters.insurerAppeal,
+    },
     { title: "Call script", file: "call-script.txt", text: letters.callScript },
     {
       title: "Financial assistance request",
@@ -121,7 +121,7 @@ function UnlockedLetters({ saved }: { saved: StoredCase }) {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-4 rounded-[18px] bg-parchment p-6 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 border-b border-dashed border-rule pb-6 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-caption">
           {details?.fullName ? (
             <>
@@ -135,10 +135,10 @@ function UnlockedLetters({ saved }: { saved: StoredCase }) {
           </TextButton>
         </p>
         <div className="flex flex-wrap gap-3">
-          <Button onClick={() => print(docs)} className="px-5 py-2 text-caption">
+          <Button onClick={() => print(docs)} className="px-5 py-2 !text-caption">
             Save all as PDF
           </Button>
-          <Button variant="secondary" onClick={downloadAll} className="px-5 py-2 text-caption">
+          <Button variant="secondary" onClick={downloadAll} className="px-5 py-2 !text-caption">
             Download all (.txt)
           </Button>
         </div>
@@ -167,25 +167,29 @@ function LetterCard({ doc, onPrint }: { doc: Doc; onPrint: () => void }) {
   }
 
   return (
-    <article className="rounded-[18px] border border-hairline">
-      <header className="flex flex-col gap-3 border-b border-hairline px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <h3 className="text-body font-semibold">{doc.title}</h3>
-        <div className="flex flex-wrap gap-x-5 gap-y-2">
-          <TextButton onClick={copy} aria-live="polite">
-            {copied ? "Copied" : "Copy"}
-          </TextButton>
-          <TextButton onClick={() => downloadText(`claimback-${doc.file}`, doc.text)}>
-            Download .txt
-          </TextButton>
-          <TextButton onClick={onPrint}>Print or save PDF</TextButton>
-        </div>
-      </header>
-      {missing.length > 0 && (
-        <p className="px-6 pt-4 text-caption text-flag">
-          Still to fill in by hand: {missing.join(", ")}
-        </p>
-      )}
-      <pre className="whitespace-pre-wrap px-6 py-5 font-sans text-caption">{doc.text}</pre>
+    <article className="paper-shadow">
+      <div className="paper rounded-[4px] border border-rule">
+        <header className="flex flex-col gap-3 border-b border-dashed border-rule px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+          <h3 className="text-body font-semibold">{doc.title}</h3>
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
+            <TextButton onClick={copy} aria-live="polite">
+              {copied ? "Copied" : "Copy"}
+            </TextButton>
+            <TextButton onClick={() => downloadText(`claimback-${doc.file}`, doc.text)}>
+              Download .txt
+            </TextButton>
+            <TextButton onClick={onPrint}>Print or save PDF</TextButton>
+          </div>
+        </header>
+        {missing.length > 0 && (
+          <p className="px-5 pt-4 text-caption text-pen sm:px-7">
+            Still to fill in by hand: {missing.join(", ")}
+          </p>
+        )}
+        <pre className="whitespace-pre-wrap px-5 py-5 font-sans text-caption text-bill-text sm:px-7">
+          {doc.text}
+        </pre>
+      </div>
     </article>
   );
 }

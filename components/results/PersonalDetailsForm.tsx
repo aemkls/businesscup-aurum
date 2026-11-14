@@ -35,11 +35,11 @@ export function PersonalDetailsForm({
   }
 
   return (
-    <form onSubmit={submit} className="rounded-[18px] bg-parchment p-6 sm:p-8">
-      <h2 className="text-tagline font-semibold">Your details for the letters</h2>
+    <form onSubmit={submit}>
+      <h2 className="text-section-sm font-bold">Your details for the letters</h2>
       <p className="mt-2 text-caption text-ink-muted">
-        We fill these into every letter so they are ready to send. They are saved only on this
-        device and never sent to our servers. Leave any field empty to fill it in by hand.
+        We put these into every letter so you can send them as they are. We keep them on this
+        device only and never send them to our servers. Leave a field empty to fill it in by hand.
       </p>
       <div className="mt-6 grid gap-x-6 gap-y-5 sm:grid-cols-2">
         {FIELDS.map((field) => (
@@ -50,7 +50,7 @@ export function PersonalDetailsForm({
                 rows={3}
                 value={details[field.key]}
                 onChange={(e) => setDetails({ ...details, [field.key]: e.target.value })}
-                className="mt-2 block w-full rounded-[18px] border border-hairline bg-canvas px-4 py-3 text-body outline-none focus:border-primary-focus focus:ring-2 focus:ring-primary-focus/30"
+                className="mt-2 block w-full rounded-[14px] border border-rule bg-paper px-4 py-3 font-mono text-body text-bill-text outline-none focus:border-action focus:ring-2 focus:ring-action/25"
               />
             ) : (
               <input
@@ -58,7 +58,7 @@ export function PersonalDetailsForm({
                 autoComplete={field.key === "fullName" ? "name" : "off"}
                 value={details[field.key]}
                 onChange={(e) => setDetails({ ...details, [field.key]: e.target.value })}
-                className={`${INPUT} mt-2 bg-canvas`}
+                className={`${INPUT} mt-2`}
               />
             )}
             <span className="mt-1 block text-fine text-ink-muted">{field.hint}</span>

@@ -11,10 +11,11 @@ export const SHORT_LABEL: Record<Finding["type"], string> = {
   surprise_bill: "Surprise bill",
 };
 
-export const CONFIDENCE: Record<Confidence, { label: string; tone: "ok" | "flag" | "neutral" }> = {
+export const CONFIDENCE: Record<Confidence, { label: string; tone: "ok" | "marker" | "neutral" }> = {
   high: { label: "High confidence", tone: "ok" },
-  medium: { label: "Medium confidence", tone: "flag" },
+  medium: { label: "Medium confidence", tone: "marker" },
   low: { label: "Low confidence", tone: "neutral" },
 };
 
-export const findingNumber = (index: number) => String(index + 1).padStart(2, "0");
+/** Findings are numbered 1, 2, 3 on the paper and in the list. */
+export const findingNumber = (index: number) => String(index + 1);

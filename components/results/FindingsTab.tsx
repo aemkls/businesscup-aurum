@@ -4,9 +4,12 @@ import { useState } from "react";
 import { usd } from "@/lib/engine/money";
 import type { AnalysisResult, Finding } from "@/lib/types";
 import { Chip, TextButton } from "../ui";
-import { CONFIDENCE, findingNumber } from "./findingLabels";
+import { CONFIDENCE } from "./findingLabels";
 
-/** Compact list of findings; evidence stays collapsed until asked for. */
+/**
+ * Findings as notes in the margin of the case file: the number circled in
+ * red pen, what is wrong, and the amount on the right.
+ */
 export function FindingsTab({
   result,
   onShowOnBill,
@@ -18,24 +21,24 @@ export function FindingsTab({
 }) {
   if (result.findings.length === 0) {
     return (
-      <div className="rounded-[18px] bg-parchment p-6 sm:p-8">
-        <h2 className="text-tagline font-semibold">Nothing to dispute</h2>
-        <p className="mt-2 text-body text-ink-muted">
+      <div>
+        <h2 className="text-section-sm font-bold">Nothing to dispute</h2>
+        <p className="mt-3 max-w-[620px] text-body text-ink-muted">
           {result.meta.hasEob
-            ? "Every line matches your EOB and your plan terms. There is nothing to dispute."
-            : "We found no duplicates or quantity errors. Add your EOB to check rates, deductible math and denials too."}
+            ? "Every line matches your EOB and your plan terms."
+            : "We found no duplicate lines or wrong quantities. Add your EOB to also check rates, deductible math and denials."}
         </p>
         <TextButton onClick={onPayLess} className="mt-4 text-body">
-          You may still pay less: check for financial assistance ›
+          You may still pay less: check for financial assistance
         </TextButton>
       </div>
     );
   }
 
   return (
-    <ol className="divide-y divide-hairline">
+    <ol>
       {result.findings.map((finding, i) => (
-        <FindingRow
+        <FindingNote
           key={finding.id}
           finding={finding}
           index={i}
@@ -46,7 +49,7 @@ export function FindingsTab({
   );
 }
 
-function FindingRow({
+function FindingNote({
   finding,
   index,
   onShowOnBill,
@@ -60,38 +63,70 @@ function FindingRow({
   const evidenceId = `evidence-${finding.id}`;
 
   return (
-    <li className="py-6 first:pt-0">
-      <div className="flex items-start justify-between gap-4">
-        <h3 className="text-body font-semibold">
-          <span className="money mr-2 text-ink-muted">{findingNumber(index)}</span>
-          {finding.title}
-        </h3>
-        <span className="money shrink-0 text-tagline font-semibold">{usd(finding.amount)}</span>
-      </div>
-      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-        <Chip tone={confidence.tone}>{confidence.label}</Chip>
-        <span className="text-caption text-ink-muted">
-          Raise with your {finding.target === "provider" ? "hospital" : "insurer"}
-        </span>
-      </div>
-      <p className="mt-3 text-caption text-ink-muted">{finding.explanation}</p>
-      <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2">
-        <TextButton onClick={() => setOpen(!open)} aria-expanded={open} aria-controls={evidenceId}>
-          {open ? "Hide evidence" : "Show evidence"}
-        </TextButton>
-        {finding.codes.length > 0 && (
-          <TextButton onClick={onShowOnBill}>See it on your bill ›</TextButton>
+    <li className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-x-3 border-b border-dashed border-rule py-6 first:pt-0 last:border-0 last:pb-0 sm:grid-cols-[2.75rem_minmax(0,1fr)_auto] sm:gap-x-5">
+      <CircledNumber n={index + 1} />
+      <div>
+        <div className="flex items-start justify-between gap-4 sm:block">
+          <h3 className="text-body font-semibold">{finding.title}</h3>
+          <span className="font-mono text-body font-semibold sm:hidden">{usd(finding.amount)}</span>
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <Chip tone={confidence.tone}>{confidence.label}</Chip>
+          <span className="text-caption text-ink-muted">
+            Raise with your {finding.target === "provider" ? "hospital" : "insurer"}
+          </span>
+        </div>
+        <p className="mt-3 max-w-[640px] text-caption text-ink-muted">{finding.explanation}</p>
+        <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2">
+          <TextButton
+            onClick={() => setOpen(!open)}
+            aria-expanded={open}
+            aria-controls={evidenceId}
+          >
+            {open ? "Hide evidence" : "Show evidence"}
+          </TextButton>
+          {finding.codes.length > 0 && (
+            <TextButton onClick={onShowOnBill}>See it on your bill</TextButton>
+          )}
+        </div>
+        {open && (
+          <ul id={evidenceId} className="mt-3 space-y-1 border-l-2 border-rule pl-4">
+            {finding.evidence.map((line) => (
+              <li key={line} className="font-mono text-fine text-bill-text">
+                {line}
+              </li>
+            ))}
+          </ul>
         )}
       </div>
-      {open && (
-        <ul id={evidenceId} className="mt-3 space-y-1 rounded-[8px] bg-parchment px-4 py-3">
-          {finding.evidence.map((line) => (
-            <li key={line} className="money text-fine text-ink">
-              {line}
-            </li>
-          ))}
-        </ul>
-      )}
+      <span className="hidden font-mono text-tagline font-semibold sm:block">
+        {usd(finding.amount)}
+      </span>
     </li>
+  );
+}
+
+/** The finding number circled in red pen, as on the paper bill. */
+export function CircledNumber({ n }: { n: number | string }) {
+  return (
+    <span className="relative inline-flex size-9 items-center justify-center">
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 40 40"
+        className="absolute inset-0 size-9 overflow-visible"
+      >
+        <path
+          d="M29 9 C 19 2, 5 9, 5 21 C 5 33, 25 38, 33 28 C 39 19, 31 7, 21 7"
+          fill="none"
+          stroke="var(--color-pen)"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+      </svg>
+      <span className="font-hand text-[24px] font-medium leading-none text-pen">
+        <span className="sr-only">Finding </span>
+        {n}
+      </span>
+    </span>
   );
 }

@@ -2,12 +2,7 @@
 
 import { useState } from "react";
 import { saveCase, type StoredCase } from "@/lib/caseStore";
-import {
-  assistanceTier,
-  fplPercent,
-  povertyGuideline,
-  type Region,
-} from "@/lib/engine/assistance";
+import { assistanceTier, fplPercent, povertyGuideline, type Region } from "@/lib/engine/assistance";
 import { usd } from "@/lib/engine/money";
 import { Button, Chip, INPUT } from "./ui";
 
@@ -50,14 +45,17 @@ export function AssistanceCheck({ saved }: { saved: StoredCase }) {
 
   return (
     <div>
-      <h2 className="text-tagline font-semibold">Can the hospital forgive part of this bill?</h2>
+      <h2 className="text-section-sm font-bold">Can the hospital forgive part of this bill?</h2>
       <p className="mt-2 max-w-[640px] text-body text-ink-muted">
         Nonprofit hospitals must have a financial assistance policy under federal tax rules, and you
         can usually apply after you get the bill. Two numbers tell you where you stand. They stay on
         this device.
       </p>
 
-      <form onSubmit={check} className="mt-6 grid gap-4 sm:grid-cols-[auto_1fr_auto_auto] sm:items-end">
+      <form
+        onSubmit={check}
+        className="mt-6 grid gap-4 sm:grid-cols-[auto_1fr_auto_auto] sm:items-end"
+      >
         <label className="block">
           <span className="text-caption font-semibold">People in household</span>
           <input
@@ -92,7 +90,7 @@ export function AssistanceCheck({ saved }: { saved: StoredCase }) {
           <select
             value={region}
             onChange={(e) => setRegion(e.target.value as Region)}
-            className={`${INPUT} mt-2 font-sans`}
+            className={`${INPUT} mt-2 !font-sans`}
           >
             <option value="contiguous">Lower 48 or DC</option>
             <option value="alaska">Alaska</option>
@@ -105,10 +103,14 @@ export function AssistanceCheck({ saved }: { saved: StoredCase }) {
       </form>
 
       {household && tier && percent !== null && (
-        <div className="rise mt-8 rounded-[18px] bg-parchment p-6" aria-live="polite">
+        <div className="mt-8 border-l-2 border-ink pl-5" aria-live="polite">
           <p className="flex flex-wrap items-center gap-3">
             <Chip tone={tier === "unlikely" ? "neutral" : "ok"}>
-              {tier === "free" ? "Likely free care" : tier === "discount" ? "Likely discount" : "Less likely"}
+              {tier === "free"
+                ? "Likely free care"
+                : tier === "discount"
+                  ? "Likely discount"
+                  : "Less likely"}
             </Chip>
             <span className="text-body font-semibold">{COPY[tier].title}</span>
           </p>

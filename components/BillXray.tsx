@@ -3,7 +3,6 @@
 import { usd } from "@/lib/engine/money";
 import type { Bill, Finding } from "@/lib/types";
 import { findingNumber, SHORT_LABEL } from "./results/findingLabels";
-import { Chip } from "./ui";
 
 /**
  * Maps each bill line to the indexes of the findings about it. For
@@ -51,8 +50,8 @@ export function BillXray({
   return (
     <div>
       <p className="text-caption text-ink-muted">
-        {flagged} of {bill.lines.length} lines flagged. Select a finding to see its lines, or a
-        flagged line to see what is wrong with it.
+        {flagged} of {bill.lines.length} lines marked. Pick a finding to see its lines, or a marked
+        line to see what is wrong with it.
       </p>
 
       <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Findings">
@@ -64,21 +63,25 @@ export function BillXray({
               type="button"
               aria-pressed={on}
               onClick={() => onSelect(on ? null : f.id)}
-              className={`rounded-full px-3 py-1.5 text-caption ${
-                on ? "bg-primary text-white" : "bg-parchment text-ink hover:text-primary"
+              className={`rounded-full border px-3 py-1.5 text-caption ${
+                on
+                  ? "border-action bg-action text-white"
+                  : "border-rule bg-paper text-ink hover:border-action"
               }`}
             >
-              <span className="money">{findingNumber(i)}</span> {SHORT_LABEL[f.type]}{" "}
-              <span className="money">{usd(f.amount)}</span>
+              <span className="font-semibold">{findingNumber(i)}</span> {SHORT_LABEL[f.type]}{" "}
+              <span className="font-mono">{usd(f.amount)}</span>
             </button>
           );
         })}
       </div>
 
       {current && (
-        <div className="mt-4 rounded-[18px] bg-parchment p-5" aria-live="polite">
+        <div className="mt-4 border-l-2 border-pen pl-4" aria-live="polite">
           <p className="text-body font-semibold">
-            <span className="money mr-2 text-ink-muted">{findingNumber(selectedIndex)}</span>
+            <span className="mr-2 font-hand text-[22px] text-pen">
+              {findingNumber(selectedIndex)}
+            </span>
             {current.title}
           </p>
           <p className="mt-1 text-caption text-ink-muted">{current.explanation}</p>
@@ -90,13 +93,13 @@ export function BillXray({
         </div>
       )}
 
-      <div className="mt-6 overflow-x-auto rounded-[18px] border border-hairline">
-        <table className="w-full text-caption">
+      <div className="mt-6 overflow-x-auto">
+        <table className="w-full font-mono text-[13px] text-bill-text">
           <thead>
-            <tr className="border-b border-hairline text-left text-fine text-ink-muted">
-              <th className="px-4 py-3 font-normal">Service</th>
-              <th className="px-4 py-3 text-right font-normal">Qty</th>
-              <th className="px-4 py-3 text-right font-normal">Charge</th>
+            <tr className="border-b border-dashed border-rule text-left text-ink-muted">
+              <th className="py-2 pr-3 font-normal">Service</th>
+              <th className="py-2 pr-3 text-right font-normal">Qty</th>
+              <th className="py-2 text-right font-normal">Amount</th>
             </tr>
           </thead>
           <tbody>
@@ -104,43 +107,44 @@ export function BillXray({
               const lineMarks = marks[row];
               const bad = lineMarks.length > 0;
               const active = selectedIndex >= 0 && lineMarks.includes(selectedIndex);
+              const select = () => onSelect(findings[lineMarks[0]].id);
               return (
                 <tr
                   key={row}
                   aria-selected={active}
                   tabIndex={bad ? 0 : undefined}
-                  onClick={bad ? () => onSelect(findings[lineMarks[0]].id) : undefined}
+                  onClick={bad ? select : undefined}
                   onKeyDown={
                     bad
                       ? (e) => {
                           if (e.key === "Enter" || e.key === " ") {
                             e.preventDefault();
-                            onSelect(findings[lineMarks[0]].id);
+                            select();
                           }
                         }
                       : undefined
                   }
-                  className={`border-b border-hairline last:border-0 ${
-                    bad ? "cursor-pointer bg-flag-soft" : ""
-                  } ${active ? "outline outline-2 -outline-offset-2 outline-primary" : ""}`}
+                  className={`border-b border-dashed border-rule last:border-0 ${
+                    bad ? "cursor-pointer bg-marker/70 hover:bg-marker" : ""
+                  } ${active ? "outline outline-2 -outline-offset-2 outline-action" : ""}`}
                 >
-                  <td className="px-4 py-3 align-top">
+                  <td className="py-2.5 pl-2 pr-3 align-top">
                     <span className="block">{line.description}</span>
-                    <span className="money mt-0.5 block text-fine text-ink-muted">
+                    <span className="mt-0.5 block text-fine text-ink-muted">
                       {line.code || "No code"} · {line.date}
                     </span>
                     {bad && (
-                      <span className="mt-2 flex flex-wrap gap-1">
+                      <span className="mt-1 flex flex-wrap gap-x-3 font-sans text-fine font-semibold text-bill-text">
                         {lineMarks.map((i) => (
-                          <Chip key={i} tone="flag">
-                            <span className="money">{findingNumber(i)}</span> {SHORT_LABEL[findings[i].type]}
-                          </Chip>
+                          <span key={i}>
+                            {findingNumber(i)}. {SHORT_LABEL[findings[i].type]}
+                          </span>
                         ))}
                       </span>
                     )}
                   </td>
-                  <td className="money px-4 py-3 text-right align-top">{line.quantity}</td>
-                  <td className={`money px-4 py-3 text-right align-top ${bad ? "font-semibold text-flag" : ""}`}>
+                  <td className="py-2.5 pr-3 text-right align-top">{line.quantity}</td>
+                  <td className={`py-2.5 pr-2 text-right align-top ${bad ? "font-semibold" : ""}`}>
                     {usd(line.charge)}
                   </td>
                 </tr>
@@ -148,11 +152,11 @@ export function BillXray({
             })}
           </tbody>
           <tfoot>
-            <tr className="border-t border-hairline">
-              <td className="px-4 py-3 text-ink-muted" colSpan={2}>
+            <tr className="border-t border-rule">
+              <td className="py-3 pl-2 text-ink-muted" colSpan={2}>
                 Amount due on the bill
               </td>
-              <td className="money px-4 py-3 text-right font-semibold">{usd(bill.amountDue)}</td>
+              <td className="py-3 pr-2 text-right font-semibold">{usd(bill.amountDue)}</td>
             </tr>
           </tfoot>
         </table>

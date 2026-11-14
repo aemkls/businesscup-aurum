@@ -11,12 +11,13 @@ import { BillXray } from "./BillXray";
 import { FindingsTab } from "./results/FindingsTab";
 import { LettersTab } from "./results/LettersTab";
 import { TabPanel, Tabs, type TabItem } from "./results/Tabs";
-import { Band, Button, ButtonLink, ErrorNote, TextButton } from "./ui";
+import { AuditedBill } from "./AuditedBill";
+import { Button, ButtonLink, ErrorNote, Section, TextButton } from "./ui";
 
 type TabId = "found" | "bill" | "letters" | "pay-less";
 
 const TABS: TabItem<TabId>[] = [
-  { id: "found", label: "What we found" },
+  { id: "found", label: "What we found", short: "Found" },
   { id: "bill", label: "Your bill" },
   { id: "letters", label: "Letters" },
   { id: "pay-less", label: "Pay less" },
@@ -95,18 +96,18 @@ export function ResultsView({
 
   if (saved === undefined) {
     return (
-      <Band tone="dark">
-        <p className="text-on-dark-muted">Loading your case…</p>
-      </Band>
+      <Section>
+        <p className="text-ink-muted">Loading your case…</p>
+      </Section>
     );
   }
   if (saved === null) {
     return (
-      <Band>
+      <Section>
         <div className="max-w-[640px]">
-          <h1 className="text-section-sm font-semibold md:text-section">No case in this browser yet</h1>
+          <h1 className="text-section-sm font-bold md:text-section">No case in this browser yet</h1>
           <p className="mt-4 text-body text-ink-muted">
-            Your case is saved on your device, not on our servers. Check a bill, or try the sample to
+            We save your case on this device, not on our servers. Check a bill, or try the sample to
             see how it works.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
@@ -116,7 +117,7 @@ export function ResultsView({
             </ButtonLink>
           </div>
         </div>
-      </Band>
+      </Section>
     );
   }
 
@@ -131,124 +132,142 @@ export function ResultsView({
 
   return (
     <>
-      <section className="bg-tile-dark px-4 py-12 text-on-dark sm:px-6 md:py-20">
-        <div className="rise mx-auto max-w-[980px]">
-          <p className="text-caption text-on-dark-muted">
-            {result.bill.provider}
-            {result.bill.statementDate && ` · statement of ${result.bill.statementDate}`}
-          </p>
-          {clean ? (
-            <>
-              <h1 className="mt-3 text-hero-sm font-semibold md:text-hero">Your bill looks right</h1>
-              <p className="mt-4 max-w-[640px] text-tagline font-normal text-on-dark-muted">
-                {result.meta.hasEob
-                  ? "Nothing on it contradicts your EOB or your plan. You may still be able to pay less."
-                  : "No duplicates or quantity errors. Add your EOB for a full check."}
-              </p>
-            </>
-          ) : (
-            <h1 className="mt-3">
-              <span className="money block text-hero-number-sm font-semibold md:text-hero-number">
-                {usd(result.potentialSavings)}
-              </span>
-              <span className="mt-2 block text-tagline font-semibold">likely overcharged</span>
-            </h1>
-          )}
-
-          {!clean && (
-            <dl className="mt-8 grid grid-cols-3 gap-4 sm:max-w-[640px]">
-              <Figure label="You were billed" value={usd(result.amountBilled)} />
-              <Figure label="In dispute" value={usd(result.potentialSavings)} />
-              <Figure label="If corrected" value={usd(result.fairAmount)} />
-            </dl>
-          )}
-
-          <div className="mt-8 flex flex-wrap items-center gap-4">
+      <section className="px-4 pb-10 pt-6 sm:px-6 md:pb-14 md:pt-10">
+        <div className="mx-auto grid max-w-[1200px] items-start gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,560px)] lg:gap-16">
+          <div className="lg:pt-6">
+            <p className="text-caption text-ink-muted">
+              {result.bill.provider}
+              {result.bill.statementDate && `, statement of ${result.bill.statementDate}`}
+            </p>
             {clean ? (
-              <Button onClick={() => go("pay-less")}>See if you can pay less</Button>
-            ) : letters ? (
-              <Button onClick={() => go("letters")}>Send your letters</Button>
+              <>
+                <h1 className="mt-3 text-hero-sm font-extrabold md:text-hero">
+                  Your bill looks right
+                </h1>
+                <p className="mt-4 max-w-[520px] text-lead text-ink-muted">
+                  {result.meta.hasEob
+                    ? "Nothing on it contradicts your EOB or your plan. You may still be able to pay less."
+                    : "We found no duplicate lines or wrong quantities. Add your EOB for a full check."}
+                </p>
+              </>
             ) : (
               <>
-                {unlockButton}
-                <span className="text-caption text-on-dark-muted">
-                  Letters, appeal and call script. $19 once.
-                </span>
+                <h1 className="mt-3">
+                  <span className="block font-mono text-hero-number-sm font-semibold tracking-tight text-ink md:text-hero-number">
+                    {usd(result.potentialSavings)}
+                  </span>
+                  <span className="mt-2 block text-section-sm font-extrabold md:text-section">
+                    you may not owe
+                  </span>
+                </h1>
+                <dl className="mt-6 flex flex-wrap items-end gap-x-4 gap-y-2 font-mono">
+                  <div>
+                    <dt className="font-sans text-fine text-ink-muted">Billed</dt>
+                    <dd className="text-tagline">{usd(result.amountBilled)}</dd>
+                  </div>
+                  <span aria-hidden="true" className="pb-0.5 text-tagline text-ink-muted">
+                    →
+                  </span>
+                  <div>
+                    <dt className="font-sans text-fine text-ink-muted">If corrected</dt>
+                    <dd className="text-tagline font-semibold">{usd(result.fairAmount)}</dd>
+                  </div>
+                </dl>
               </>
             )}
-          </div>
-          {error && active !== "letters" && (
-            <div className="mt-6 max-w-[640px]">
-              <ErrorNote>{error}</ErrorNote>
+
+            <div className="mt-8 flex flex-wrap items-center gap-4">
+              {clean ? (
+                <Button onClick={() => go("pay-less")}>See if you can pay less</Button>
+              ) : letters ? (
+                <Button onClick={() => go("letters")}>Send your letters</Button>
+              ) : (
+                <>
+                  {unlockButton}
+                  <span className="text-caption text-ink-muted">
+                    Letters, appeal and call script. $19 once.
+                  </span>
+                </>
+              )}
             </div>
-          )}
+            {error && active !== "letters" && (
+              <div className="mt-6 max-w-[520px]">
+                <ErrorNote>{error}</ErrorNote>
+              </div>
+            )}
+            <Notes saved={saved} />
+          </div>
+
+          <AuditedBill
+            bill={result.bill}
+            findings={result.findings}
+            fairAmount={result.fairAmount}
+            start={200}
+            label={
+              clean
+                ? "Your bill. Nothing on it is marked."
+                : `Your bill, marked up: ${result.findings.length} findings, amount due corrected from ${usd(result.amountBilled)} to ${usd(result.fairAmount)}.`
+            }
+          />
         </div>
       </section>
 
-      <Band wide={active === "bill"} className="!pt-8 md:!pt-12">
-        <Tabs tabs={TABS} active={active} onChange={(id) => go(id)} label="Your results" />
+      <section className="px-4 pb-16 sm:px-6">
+        <div className={`mx-auto w-full ${active === "bill" ? "max-w-[1200px]" : "max-w-[980px]"}`}>
+          <h2 className="sr-only">Your case file</h2>
+          <div className="paper-shadow">
+            <Tabs tabs={TABS} active={active} onChange={(id) => go(id)} label="Your case file" />
+            <TabPanel id={active}>
+              {active === "found" && (
+                <FindingsTab
+                  result={result}
+                  onShowOnBill={(id) => go("bill", id)}
+                  onPayLess={() => go("pay-less")}
+                />
+              )}
+              {active === "bill" && (
+                <BillXray
+                  bill={result.bill}
+                  findings={result.findings}
+                  selected={finding}
+                  onSelect={(id) => {
+                    const query = new URLSearchParams({ tab: "bill" });
+                    if (id) query.set("finding", id);
+                    router.replace(`/results?${query}`, { scroll: false });
+                  }}
+                />
+              )}
+              {active === "letters" && (
+                <LettersTab
+                  saved={saved}
+                  unlockButton={unlockButton}
+                  error={error}
+                  onPayLess={() => go("pay-less")}
+                />
+              )}
+              {active === "pay-less" && <AssistanceCheck saved={saved} />}
+            </TabPanel>
+          </div>
 
-        <TabPanel id={active}>
-          {active === "found" && (
-            <>
-              <Notes saved={saved} />
-              <FindingsTab
-                result={result}
-                onShowOnBill={(id) => go("bill", id)}
-                onPayLess={() => go("pay-less")}
-              />
-            </>
-          )}
-          {active === "bill" && (
-            <BillXray
-              bill={result.bill}
-              findings={result.findings}
-              selected={finding}
-              onSelect={(id) => {
-                const query = new URLSearchParams({ tab: "bill" });
-                if (id) query.set("finding", id);
-                router.replace(`/results?${query}`, { scroll: false });
+          <div className="no-print mt-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            {!clean && (
+              <Link href="/case" className="text-body font-semibold text-action hover:underline">
+                My case: your follow-up plan and reminders
+              </Link>
+            )}
+            <TextButton
+              onClick={() => {
+                if (!window.confirm("Delete this case from this browser?")) return;
+                saveCase(null);
+                router.push("/check");
               }}
-            />
-          )}
-          {active === "letters" && (
-            <LettersTab
-              saved={saved}
-              unlockButton={unlockButton}
-              error={error}
-              onPayLess={() => go("pay-less")}
-            />
-          )}
-          {active === "pay-less" && <AssistanceCheck saved={saved} />}
-        </TabPanel>
-
-        <div className="no-print mt-16 flex flex-col gap-4 border-t border-hairline pt-6 sm:flex-row sm:items-center sm:justify-between">
-          {!clean && (
-            <Link href="/case" className="text-body text-primary hover:underline">
-              My case: your follow-up plan and reminders ›
-            </Link>
-          )}
-          <TextButton
-            onClick={() => {
-              if (!window.confirm("Delete this case from this browser?")) return;
-              saveCase(null);
-              router.push("/check");
-            }}
-          >
-            Delete this case and start over
-          </TextButton>
+            >
+              Delete this case and start over
+            </TextButton>
+          </div>
         </div>
-      </Band>
+      </section>
     </>
-  );
-}
-
-function Figure({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-fine text-on-dark-muted">{label}</dt>
-      <dd className="money mt-1 text-body font-semibold sm:text-tagline">{value}</dd>
-    </div>
   );
 }
 
@@ -257,21 +276,20 @@ function Notes({ saved }: { saved: StoredCase }) {
   const { meta } = saved.result;
   if (meta.hasEob && meta.aiExtraction) return null;
   return (
-    <div className="mb-8 space-y-2 rounded-[18px] bg-parchment px-6 py-4 text-caption text-ink-muted">
+    <div className="mt-8 max-w-[520px] space-y-2 border-l-2 border-rule pl-4 text-caption text-ink-muted">
       {!meta.hasEob && (
         <p>
-          <span className="font-semibold text-ink">No EOB was added,</span> so we only checked the
-          bill against itself. The EOB unlocks rate, deductible and denial checks.{" "}
-          <Link href="/check" className="text-primary hover:underline">
+          <span className="font-semibold text-ink">You did not add an EOB,</span> so we only checked
+          the bill against itself. The EOB adds rate, deductible and denial checks.{" "}
+          <Link href="/check" className="font-semibold text-action hover:underline">
             Run again with the EOB
           </Link>
         </p>
       )}
       {!meta.aiExtraction && (
         <p>
-          <span className="font-semibold text-ink">The AI reader was busy,</span> so the sample
-          documents were loaded from their structured source. Every amount was still computed by the
-          rule engine.
+          <span className="font-semibold text-ink">The AI reader was busy,</span> so we loaded the
+          sample documents from their source data. The rule engine still computed every amount.
         </p>
       )}
     </div>
