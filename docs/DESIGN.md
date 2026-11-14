@@ -19,8 +19,11 @@ use ClaimBack to make decisions about money and medical bills.
 - **Paper on a desk.** The page is a cool desk; documents (bill, plan card,
   letters, case file) are white paper with a soft shadow. No cream backgrounds,
   no pure black blocks, no decorative gradients.
-- **Details behind tabs.** Results use folder tabs: What we found, Your bill,
-  Letters, Pay less.
+- **Details behind tabs.** Results use folder tabs: What we found, Next steps,
+  Your bill, Letters, Pay less.
+- **Questions are not errors.** A low-confidence finding ("worth asking", e.g.
+  a split visit) gets a dashed pen box instead of the marker, the note starts
+  with "worth asking", and its amount is muted and marked "not counted".
 
 ## Color
 
@@ -75,6 +78,9 @@ Numbering ("01", "02") only where there is a real sequence (the three steps).
 - **Folder tabs** (`components/results/Tabs.tsx`): labels on the edge of the
   case file; the active tab joins the paper page. `?tab=` in the URL, arrow
   keys, Home and End.
+- **Circled numbers**: the circle is drawn by hand, the digit is set in
+  Bricolage bold in pen color (a handwritten "1" reads as a dot at this size).
+- **Deadline chip**: ink fill, mono text, always "Due <date>" or "Hard deadline".
 - **Finding note**: circled number, title, confidence word, who to contact,
   explanation, evidence behind "Show evidence", amount right-aligned in mono.
 - **Letter stack under glass**: the paid letters as a blurred stack with a

@@ -33,7 +33,9 @@ pen; everything else stays calm.
   problem lines, pen strikes the duplicate CT, corrects qty 10 to 1, writes
   margin notes, strikes $3,729.80 and writes $1,182.80. The marks come from
   the rule engine run on the sample case.
-- Primary **Try with a sample bill** (`/check?sample=1`), secondary **Check my bill**.
+- Primary **Try with a sample bill** (`/check?sample=er`), secondary **Check my bill**,
+  and a choice of the two samples: ER visit or a "free" annual physical
+  (`/check?sample=physical`). The hero always shows the ER bill.
 - Three steps, then three KFF numbers with the source.
 - "You have an open case" line in the hero when this browser has one.
 
@@ -73,13 +75,17 @@ pen; everything else stays calm.
   1. **What we found**: one row per finding with amount, confidence word
      (High / Medium / Low), who to contact and a plain explanation; evidence
      collapsed behind "Show evidence"; "See it on your bill".
-  2. **Your bill**: the bill line by line, flagged lines marked. Selecting a
+  2. **Next steps**: the action plan from `lib/features/actions.ts` (denial
+     decoder, facility fee, itemized bill, collections, Good Faith Estimate,
+     how to pay), with three questions the documents cannot answer. Deadlines
+     show as "Due <date>"; the extra letters unlock with the case.
+  3. **Your bill**: the bill line by line, flagged lines marked. Selecting a
      finding highlights its lines; clicking a flagged line selects its
      finding (`&finding=` in the URL).
-  3. **Letters**: before payment a blurred preview and the offer; after it a
+  4. **Letters**: before payment a blurred preview and the offer; after it a
      personal details form, then the letters with Copy, Download .txt,
      Print / save PDF, and Download all.
-  4. **Pay less**: financial assistance screening against the 2026 federal
+  5. **Pay less**: financial assistance screening against the 2026 federal
      poverty guidelines; answers stay on the device.
 - Empty states: no case in this browser; no EOB (note and "Run again with
   the EOB"); nothing found ("Your bill looks right" and the Pay less tab).
