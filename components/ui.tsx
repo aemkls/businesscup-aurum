@@ -3,17 +3,15 @@ import type { ComponentProps, ReactNode } from "react";
 
 /**
  * Small building blocks from docs/DESIGN.md, so every screen uses the same
- * buttons, bands, cards and chips instead of one-off class lists.
+ * buttons, sections, paper and chips instead of one-off class lists.
  */
 
 const BUTTON =
   "press inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-body font-semibold disabled:cursor-not-allowed disabled:opacity-50";
 
 const VARIANTS = {
-  primary: "bg-primary text-white hover:bg-primary-focus",
-  secondary: "border border-primary text-primary hover:bg-primary/5",
-  /** Secondary button on a dark band. */
-  secondaryOnDark: "border border-primary-on-dark text-primary-on-dark hover:bg-white/5",
+  primary: "bg-action text-white hover:bg-action-hover",
+  secondary: "border border-action bg-paper/60 text-action hover:bg-paper",
 } as const;
 
 type Variant = keyof typeof VARIANTS;
@@ -34,38 +32,29 @@ export function ButtonLink({
   return <Link {...props} className={`${BUTTON} ${VARIANTS[variant]} ${className}`} />;
 }
 
-/** A plain text action: Action Blue, underline on hover/focus only. */
+/** A plain text action in the action color, underlined on hover. */
 export function TextButton({ className = "", ...props }: ComponentProps<"button">) {
   return (
     <button
       type="button"
       {...props}
-      className={`text-caption text-primary hover:underline disabled:opacity-50 ${className}`}
+      className={`text-caption font-semibold text-action hover:underline disabled:opacity-50 ${className}`}
     />
   );
 }
 
-const TONES = {
-  light: "bg-canvas text-ink",
-  parchment: "bg-parchment text-ink",
-  dark: "bg-tile-dark text-on-dark",
-} as const;
-
-/** A full-width section; light and dark bands alternate instead of borders. */
-export function Band({
-  tone = "light",
+/** A page section on the desk. 980px for reading, 1200px for wide layouts. */
+export function Section({
   wide = false,
   className = "",
   children,
 }: {
-  tone?: keyof typeof TONES;
-  /** 1200px for tables, 980px for reading. */
   wide?: boolean;
   className?: string;
   children: ReactNode;
 }) {
   return (
-    <section className={`${TONES[tone]} px-4 py-12 sm:px-6 md:py-20 ${className}`}>
+    <section className={`px-4 py-10 sm:px-6 md:py-16 ${className}`}>
       <div className={`mx-auto w-full ${wide ? "max-w-[1200px]" : "max-w-[980px]"}`}>
         {children}
       </div>
@@ -73,18 +62,30 @@ export function Band({
   );
 }
 
-export function Card({ className = "", children }: { className?: string; children: ReactNode }) {
+/**
+ * A sheet of paper on the desk. On phones it runs edge to edge, like a
+ * document held in the hand; from sm up it is a sheet with a shadow.
+ */
+export function Paper({
+  torn = false,
+  className = "",
+  children,
+}: {
+  torn?: boolean;
+  className?: string;
+  children: ReactNode;
+}) {
   return (
-    <div className={`rounded-[18px] border border-hairline bg-canvas p-6 ${className}`}>
-      {children}
+    <div className={`paper-shadow -mx-4 sm:mx-0 ${className}`}>
+      <div className={`paper sm:rounded-[4px] ${torn ? "paper-torn" : ""}`}>{children}</div>
     </div>
   );
 }
 
 const CHIPS = {
-  neutral: "bg-parchment text-ink-muted",
-  flag: "bg-flag-soft text-flag",
-  ok: "bg-parchment text-ok",
+  neutral: "bg-desk text-ink-muted",
+  marker: "bg-marker text-bill-text",
+  ok: "bg-desk text-ok",
 } as const;
 
 /** A status word. Status colors are never used without a word. */
@@ -104,15 +105,25 @@ export function Chip({
   );
 }
 
-/** A labeled pill input with an optional unit ($, %). */
+/** A pill input on paper. */
 export const INPUT =
-  "money h-11 w-full rounded-full border border-hairline bg-parchment px-4 text-body outline-none focus:border-primary-focus focus:ring-2 focus:ring-primary-focus/30";
+  "money h-11 w-full rounded-full border border-rule bg-paper px-4 font-mono text-body text-bill-text outline-none focus:border-action focus:ring-2 focus:ring-action/25";
 
 export function ErrorNote({ children }: { children: ReactNode }) {
   return (
-    <div role="alert" className="rounded-[18px] bg-flag-soft px-5 py-4 text-caption text-ink">
-      <span className="font-semibold text-flag">Problem: </span>
+    <div
+      role="alert"
+      className="rounded-[14px] border-l-4 border-pen bg-paper px-5 py-4 text-caption text-ink"
+    >
+      <span className="font-semibold text-pen">Problem: </span>
       {children}
     </div>
+  );
+}
+
+/** A short handwritten note in red pen. Only used on paper. */
+export function PenNote({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return (
+    <span className={`font-hand text-note font-medium text-pen ${className}`}>{children}</span>
   );
 }
