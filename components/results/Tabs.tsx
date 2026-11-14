@@ -62,7 +62,7 @@ export function Tabs<T extends string>({
             aria-controls={`panel-${tab.id}`}
             tabIndex={selected ? 0 : -1}
             onClick={() => onChange(tab.id)}
-            className={`whitespace-nowrap rounded-t-[10px] px-3 text-caption sm:px-5 ${
+            className={`whitespace-nowrap rounded-t-[10px] px-2.5 text-caption sm:px-5 ${
               selected
                 ? "bg-paper pb-3 pt-3 font-semibold text-ink"
                 : "bg-desk-deep pb-2 pt-2 text-ink-muted hover:text-ink"

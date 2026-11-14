@@ -13,12 +13,14 @@ import { SHORT_LABEL } from "./results/findingLabels";
 import { LettersTab } from "./results/LettersTab";
 import { TabPanel, Tabs, type TabItem } from "./results/Tabs";
 import { AuditedBill } from "./AuditedBill";
+import { NextSteps } from "./NextSteps";
 import { Button, ButtonLink, ErrorNote, Section, TextButton } from "./ui";
 
-type TabId = "found" | "bill" | "letters" | "pay-less";
+type TabId = "found" | "next" | "bill" | "letters" | "pay-less";
 
 const TABS: TabItem<TabId>[] = [
   { id: "found", label: "What we found", short: "Found" },
+  { id: "next", label: "Next steps", short: "Next" },
   { id: "bill", label: "Your bill" },
   { id: "letters", label: "Letters" },
   { id: "pay-less", label: "Pay less" },
@@ -112,7 +114,7 @@ export function ResultsView({
             see how it works.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <ButtonLink href="/check?sample=1">Try with a sample bill</ButtonLink>
+            <ButtonLink href="/check?sample=er">Try with a sample bill</ButtonLink>
             <ButtonLink href="/check" variant="secondary">
               Check my bill
             </ButtonLink>
@@ -124,6 +126,10 @@ export function ResultsView({
 
   const { result, letters } = saved;
   const clean = result.findings.length === 0;
+  // Low-confidence findings are questions to ask; the engine leaves them out of the total.
+  const asking = result.findings
+    .filter((f) => f.confidence === "low")
+    .reduce((total, f) => total + f.amount, 0);
 
   const unlockButton = (
     <Button onClick={unlock} disabled={starting || returning}>
@@ -174,6 +180,12 @@ export function ResultsView({
                     <dd className="text-tagline font-semibold">{usd(result.fairAmount)}</dd>
                   </div>
                 </dl>
+                {asking > 0 && (
+                  <p className="mt-3 text-caption text-ink-muted">
+                    Also worth asking about: <span className="font-mono">{usd(asking)}</span>, not
+                    counted above.
+                  </p>
+                )}
               </>
             )}
 
@@ -206,8 +218,17 @@ export function ResultsView({
                       className="flex w-full items-center gap-3 text-left text-caption hover:text-action"
                     >
                       <CircledNumber n={i + 1} />
-                      <span className="flex-1">{SHORT_LABEL[f.type]}</span>
-                      <span className="font-mono">{usd(f.amount)}</span>
+                      <span className="flex-1">
+                        {SHORT_LABEL[f.type]}
+                        {f.confidence === "low" && (
+                          <span className="text-ink-muted"> · worth asking</span>
+                        )}
+                      </span>
+                      <span
+                        className={`font-mono ${f.confidence === "low" ? "text-ink-muted" : ""}`}
+                      >
+                        {usd(f.amount)}
+                      </span>
                     </button>
                   </li>
                 ))}
@@ -248,6 +269,7 @@ export function ResultsView({
                   onPayLess={() => go("pay-less")}
                 />
               )}
+              {active === "next" && <NextSteps saved={saved} />}
               {active === "bill" && (
                 <BillXray
                   bill={result.bill}

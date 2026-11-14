@@ -86,6 +86,8 @@ const CHIPS = {
   neutral: "bg-desk text-ink-muted",
   marker: "bg-marker text-bill-text",
   ok: "bg-desk text-ok",
+  /** A hard deadline: ink, the strongest neutral, with the word "Due". */
+  deadline: "bg-ink font-mono text-white",
 } as const;
 
 /** A status word. Status colors are never used without a word. */
