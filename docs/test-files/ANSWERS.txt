@@ -1,0 +1,35 @@
+ClaimBack: тестовые документы и ожидаемые результаты
+Все документы выдуманы. Ожидаемые цифры посчитаны тем же движком правил, что работает на сайте.
+Как проверить: https://businesscup-aurum-delta.vercel.app -> Check my bill -> загрузить файлы -> Continue to your plan -> ввести цифры плана -> Run the check.
+Для случаев 1, 3 и 4 цифры плана совпадают с кнопкой «Fill from sample». Для случая 2 введите их вручную.
+Если ИИ неверно прочитает строку с фото, сумма может отличаться: тогда загрузите PDF.
+
+=== 1-er-visit: ER visit, 5 billing errors
+Файлы: 1-er-visit_bill-photo.jpg (или _bill.pdf) + 1-er-visit_eob.pdf
+План: deductible 1500, deductible paid 500, coinsurance 20%, out-of-pocket max 6000, out-of-pocket paid 500, copay 0, In-network
+Ожидается: $2,547.00 you may not owe, Billed $3,729.80 -> If corrected $1,182.80
+  1. $1,420.00  дубль строки (High): Charged 2 times for CT head without contrast
+  2. $400.00  ошибка франшизы/коинстрахования (High): Your insurer's math does not match your plan
+  3. $340.00  отказ, можно обжаловать (Medium): Denied: Chest X-ray, 2 views
+  4. $225.00  неверное количество (High): 10 units of Venipuncture (blood draw)
+  5. $162.00  выше тарифа страховой (High): Billed above the insurer's rate for Electrocardiogram, tracing
+
+=== 2-annual-physical: “Free” annual physical
+Файлы: 2-annual-physical_bill-photo.jpg (или _bill.pdf) + 2-annual-physical_eob.pdf
+План: deductible 2000, deductible paid 0, coinsurance 20%, out-of-pocket max 7000, out-of-pocket paid 0, copay 0, In-network
+Ожидается: $73.00 you may not owe, Billed $407.00 -> If corrected $334.00
+  1. $45.00  профилактика должна быть бесплатной (High): You were charged for a preventive visit
+  2. $28.00  профилактика должна быть бесплатной (Medium): A screening cholesterol panel was billed as diagnostic
+  3. $112.00  раздвоенный визит (worth asking) (Worth asking, не входит в сумму): Your physical was billed as two visits
+
+=== 3-clean-bill: Clean ER bill, no errors
+Файлы: 3-clean-bill_bill-photo.jpg (или _bill.pdf) + 3-clean-bill_eob.pdf
+План: deductible 1500, deductible paid 500, coinsurance 20%, out-of-pocket max 6000, out-of-pocket paid 500, copay 0, In-network
+Ожидается: «Your bill looks right», 0 находок (счёт $1,182.80)
+
+=== 4-er-bill-no-eob: ER bill without the EOB
+Файлы: 1-er-visit_bill-photo.jpg (или _bill.pdf), EOB не загружать
+План: deductible 1500, deductible paid 500, coinsurance 20%, out-of-pocket max 6000, out-of-pocket paid 500, copay 0, In-network
+Ожидается: $1,645.00 you may not owe, Billed $3,729.80 -> If corrected $2,084.80
+  1. $1,420.00  дубль строки (Medium): Charged 2 times for CT head without contrast
+  2. $225.00  неверное количество (Medium): 10 units of Venipuncture (blood draw)
