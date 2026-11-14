@@ -22,12 +22,17 @@ why, and the documents to get it fixed.
 
 ## Screens
 
-The visual language is in [`DESIGN.md`](DESIGN.md): light and dark bands,
-one action color, the dollar amount as the hero, details behind tabs.
+The visual language is in [`DESIGN.md`](DESIGN.md): "audit on paper". The
+bill is a sheet of paper on a desk, marked up with a yellow marker and a red
+pen; everything else stays calm.
 
 ### 1. Landing `/`
 
-- Dark hero: "Your hospital bill is probably wrong. Find out by how much."
+- Headline "Hospital bills are full of mistakes. We find yours." next to the
+  sample bill as paper. On load, one ~3 s scene marks it up: marker on the
+  problem lines, pen strikes the duplicate CT, corrects qty 10 to 1, writes
+  margin notes, strikes $3,729.80 and writes $1,182.80. The marks come from
+  the rule engine run on the sample case.
 - Primary **Try with a sample bill** (`/check?sample=1`), secondary **Check my bill**.
 - Three steps, then three KFF numbers with the source.
 - "You have an open case" line in the hero when this browser has one.
@@ -44,7 +49,7 @@ one action color, the dollar amount as the hero, details behind tabs.
 | Copay for this visit | $, 0 if none |
 | Network | In-network / Out-of-network |
 
-- Thin progress bar, step counter.
+- Thin progress bar, step counter. The fields sit on a health plan card.
 - A "?" next to every field answers "Where do I find this?" (plan summary,
   insurer portal, insurance card).
 - **Fill from sample**; the form is remembered in `localStorage`; inline
@@ -61,10 +66,10 @@ one action color, the dollar amount as the hero, details behind tabs.
 
 ### 4. Results `/results`
 
-- Dark summary band: "$X likely overcharged", billed / in dispute / if
-  corrected, and one action: **Unlock my case for $19** before payment,
-  **Send your letters** after it.
-- Tabs (pill segmented control, `?tab=` in the URL, arrow keys):
+- Head: "$X you may not owe", "Billed → If corrected", and one action:
+  **Unlock my case for $19** before payment, **Send your letters** after it.
+  Next to it the user's own bill as paper, marked up from the findings, once.
+- Folder tabs on the case file (`?tab=` in the URL, arrow keys):
   1. **What we found**: one row per finding with amount, confidence word
      (High / Medium / Low), who to contact and a plain explanation; evidence
      collapsed behind "Show evidence"; "See it on your bill".
@@ -92,8 +97,9 @@ one action color, the dollar amount as the hero, details behind tabs.
 
 ### 6. My case `/case`
 
-- Summary (provider, billed, in dispute), progress bar, timeline of steps.
-- **Mark as sent** on a letter records the date; follow-up deadlines (day 14
+- A case file folder: summary (provider, billed, in dispute), progress bar,
+  timeline of steps.
+- **Mark as sent** stamps the letter SENT with the date; follow-up deadlines (day 14
   call, day 30 escalation, appeal deadline) count from that date.
 - **Add reminders to my calendar** downloads an `.ics` file with the same dates.
 
