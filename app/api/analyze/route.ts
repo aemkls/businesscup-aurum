@@ -6,6 +6,7 @@ import { extractDocuments, NotABillError, type DocumentInput } from "@/lib/ai/ex
 import { billToText, eobToText } from "@/lib/documentText";
 import { runEngine, summarize } from "@/lib/engine";
 import { planSchema } from "@/lib/planSchema";
+import { cachedSample } from "@/lib/sampleRun";
 import type { AnalysisResult, Bill, Eob } from "@/lib/types";
 
 export const maxDuration = 60;
@@ -29,14 +30,6 @@ function mimeTypeOf(file: File): string {
   const ext = file.name.split(".").pop()?.toLowerCase();
   return ext === "heic" || ext === "heif" ? `image/${ext}` : "";
 }
-
-/**
- * The sample documents never change, so a sample run that the AI has already
- * read is kept in memory for a while. The first click of a fresh server goes
- * through the full pipeline; repeated clicks do not spend AI quota.
- */
-const SAMPLE_TTL_MS = 30 * 60 * 1000;
-const sampleCache = new Map<string, { at: number; result: AnalysisResult }>();
 
 const fail = (status: number, error: string) => Response.json({ error }, { status });
 
@@ -80,9 +73,25 @@ export async function POST(request: Request) {
   const plan = planSchema.safeParse(isSample && !planInput ? sampleCase.plan : planInput);
   if (!plan.success) return fail(400, "Check the plan numbers and try again.");
 
-  const cacheKey = isSample ? `${sampleKind === "physical" ? "physical" : "er"}:${JSON.stringify(plan.data)}` : null;
-  const cached = cacheKey ? sampleCache.get(cacheKey) : undefined;
-  if (cached && Date.now() - cached.at < SAMPLE_TTL_MS) return Response.json(cached.result);
+  if (isSample) {
+    try {
+      return Response.json(await cachedSample(sampleKind === "physical" ? "physical" : "er", plan.data));
+    } catch (error) {
+      if (!(error instanceof AiUnavailableError)) console.error(error);
+      // The sample must always work: if the AI cannot read it, use its
+      // structured source. The engine still computes every finding.
+      const findings = runEngine(sampleCase.bill, sampleCase.eob, plan.data);
+      const fallback: AnalysisResult = {
+        plan: plan.data,
+        bill: sampleCase.bill,
+        eob: sampleCase.eob,
+        findings,
+        ...summarize(sampleCase.bill, findings),
+        meta: { aiExtraction: false, aiExplanations: false, model: null, hasEob: true },
+      };
+      return Response.json(fallback);
+    }
+  }
 
   let billDoc: DocumentInput | null;
   let eobDoc: DocumentInput | null;
@@ -141,7 +150,5 @@ export async function POST(request: Request) {
       hasEob: eob !== null,
     },
   };
-  // Remember a sample read by the AI, so repeated demo clicks answer at once.
-  if (cacheKey && aiExtraction) sampleCache.set(cacheKey, { at: Date.now(), result });
   return Response.json(result);
 }
