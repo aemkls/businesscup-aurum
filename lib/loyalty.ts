@@ -1,5 +1,5 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
 import type Stripe from "stripe";
+import { isId, sign, unsign } from "./signed";
 import type { StripeLike } from "./stripeLike";
 
 /**
@@ -66,34 +66,12 @@ export function loyaltyEnabled(): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Signed values: base64url(JSON) + "." + base64url(HMAC-SHA256(JSON))
+// Signed values (lib/signed.ts). The loyalty token and the free pass carry
+// no `purpose`; a payload that has one belongs to another kind of token.
 
-function mac(json: string, secret: string): Buffer {
-  return createHmac("sha256", secret).update(json).digest();
-}
+export { sign, unsign };
 
-export function sign(payload: object, secret: string): string {
-  const json = JSON.stringify(payload);
-  return `${Buffer.from(json).toString("base64url")}.${mac(json, secret).toString("base64url")}`;
-}
-
-/** The payload if the signature is right, otherwise null. */
-export function unsign(value: string | undefined | null, secret: string): unknown {
-  if (!value || !secret) return null;
-  const dot = value.indexOf(".");
-  if (dot <= 0 || dot !== value.lastIndexOf(".")) return null;
-  const json = Buffer.from(value.slice(0, dot), "base64url").toString("utf8");
-  const given = Buffer.from(value.slice(dot + 1), "base64url");
-  const expected = mac(json, secret);
-  if (given.length !== expected.length || !timingSafeEqual(given, expected)) return null;
-  try {
-    return JSON.parse(json);
-  } catch {
-    return null;
-  }
-}
-
-const isId = (v: unknown): v is string => typeof v === "string" && v.length > 0 && v.length < 256;
+const hasPurpose = (data: object) => "purpose" in data;
 
 export function encodeToken(token: LoyaltyToken, secret: string): string {
   return sign(token, secret);
@@ -101,7 +79,8 @@ export function encodeToken(token: LoyaltyToken, secret: string): string {
 
 export function decodeToken(value: string | undefined | null, secret: string): LoyaltyToken | null {
   const data = unsign(value, secret) as Partial<LoyaltyToken> | null;
-  if (!data || data.v !== 1 || !isId(data.fp) || !Array.isArray(data.stamps)) return null;
+  if (!data || hasPurpose(data)) return null;
+  if (data.v !== 1 || !isId(data.fp) || !Array.isArray(data.stamps)) return null;
   if (data.stamps.length > STAMPS_FOR_FREE) return null;
   if (!data.stamps.every((st) => st && isId(st.s) && isId(st.pi))) return null;
   return { v: 1, fp: data.fp, stamps: data.stamps.map(({ s, pi }) => ({ s, pi })) };
@@ -119,7 +98,8 @@ export function decodeFreePass(
   now = Date.now(),
 ): string | null {
   const data = unsign(value, secret) as Partial<FreePass> | null;
-  if (!data || data.v !== 1 || !isId(data.free) || typeof data.exp !== "number") return null;
+  if (!data || hasPurpose(data)) return null;
+  if (data.v !== 1 || !isId(data.free) || typeof data.exp !== "number") return null;
   return data.exp > now ? data.free : null;
 }
 

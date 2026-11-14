@@ -84,8 +84,9 @@ export async function unlockPaidCase(
   } catch {
     return NOT_PAID; // unknown or malformed session id
   }
+  // Only a one-time $19 payment: a subscription or a setup checkout opens no case here.
   const intent = typeof session.payment_intent === "object" ? session.payment_intent : null;
-  if (session.payment_status !== "paid" || !intent) return NOT_PAID;
+  if (session.mode !== "payment" || session.payment_status !== "paid" || !intent) return NOT_PAID;
 
   const bound = intent.metadata?.case_hash;
   if (bound === hash) return { ok: true, bound: false };

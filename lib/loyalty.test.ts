@@ -190,6 +190,27 @@ describe("adding stamps", () => {
     });
   });
 
+  it("a family plan subscription gives no stamp", async () => {
+    const stripe: LoyaltyStripe = {
+      checkout: {
+        sessions: {
+          retrieve: vi.fn(async (id: string) =>
+            ({
+              id,
+              mode: "subscription",
+              payment_status: "paid",
+              status: "complete",
+              payment_intent: null,
+              subscription: "sub_1",
+            }) as unknown as Stripe.Checkout.Session,
+          ),
+        },
+      },
+      paymentIntents: { update: vi.fn(async () => ({})) },
+    };
+    expect(await stampFromCheckout(stripe, undefined, "cs_family", SECRET)).toEqual({ ok: false, reason: "unpaid" });
+  });
+
   it("ignores a forged cookie and starts a fresh card", async () => {
     const { stripe } = fakeStripe({ paid: { cs_9: { pi: "pi_9", fp: CARD } } });
     const forged = `${Buffer.from(JSON.stringify(threeStamps)).toString("base64url")}.forged`;

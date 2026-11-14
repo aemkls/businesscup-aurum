@@ -74,6 +74,29 @@ describe("one payment opens one case", () => {
     expect(updates).toHaveLength(0);
   });
 
+  it("refuses a family subscription or a setup checkout in place of a $19 payment", async () => {
+    for (const mode of ["subscription", "setup"]) {
+      const updates: unknown[] = [];
+      const client: StripeLike = {
+        checkout: {
+          sessions: {
+            retrieve: vi.fn(async () =>
+              ({
+                id: "cs_1",
+                mode,
+                payment_status: "paid",
+                payment_intent: { id: "pi_1", metadata: {} },
+              }) as unknown as Stripe.Checkout.Session,
+            ),
+          },
+        },
+        paymentIntents: { update: vi.fn(async (...args: unknown[]) => updates.push(args)) },
+      };
+      expect(await unlockPaidCase(client, "cs_1", HASH, NOW)).toMatchObject({ ok: false, code: "not_paid" });
+      expect(updates).toHaveLength(0);
+    }
+  });
+
   it("refuses an unknown session id with 402", async () => {
     const { client } = fakeStripe("missing");
     expect(await unlockPaidCase(client, "cs_made_up", HASH, NOW)).toMatchObject({
