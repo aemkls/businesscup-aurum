@@ -22,6 +22,7 @@ export function LettersTab({
   free = false,
   payInstead = null,
   loyaltyCard = null,
+  notice = null,
   error,
   onPayLess,
 }: {
@@ -31,6 +32,8 @@ export function LettersTab({
   free?: boolean;
   payInstead?: React.ReactNode;
   loyaltyCard?: React.ReactNode;
+  /** A short line above the offer, e.g. the last payment was for another bill. */
+  notice?: React.ReactNode;
   error: string;
   onPayLess: () => void;
 }) {
@@ -54,6 +57,7 @@ export function LettersTab({
     const toInsurer = result.findings.some((f) => f.target === "insurer");
     return (
       <div className="space-y-4">
+        {notice}
         <LockedPreview result={result}>
           <h2 className="text-tagline font-bold">Get the letters that fix this</h2>
           <ul className="mt-3 space-y-1.5 text-caption">

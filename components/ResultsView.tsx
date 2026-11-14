@@ -30,6 +30,16 @@ const TABS: TabItem<TabId>[] = [
 
 const isTab = (value: string | null): value is TabId => TABS.some((t) => t.id === value);
 
+/** An error from /api/letters, with the server's code ("other_case", "not_paid"). */
+class LettersError extends Error {
+  constructor(
+    message: string,
+    readonly code?: string,
+  ) {
+    super(message);
+  }
+}
+
 async function fetchLetters(saved: StoredCase, sessionId: string | null): Promise<CaseLetters> {
   const response = await fetch("/api/letters", {
     method: "POST",
@@ -37,9 +47,13 @@ async function fetchLetters(saved: StoredCase, sessionId: string | null): Promis
     body: JSON.stringify({ sessionId, result: saved.result, household: saved.household ?? null }),
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error ?? "Could not prepare your documents.");
+  if (!response.ok) {
+    throw new LettersError(data.error ?? "Could not prepare your documents.", data.code);
+  }
   return data.letters as CaseLetters;
 }
+
+const OTHER_CASE_NOTE = "Your last payment unlocked a different bill. This one is a new case.";
 
 const FREE_UNLOCKED = "Your free case is unlocked. Your loyalty card starts again.";
 
@@ -72,23 +86,37 @@ export function ResultsView({
   const router = useRouter();
   const saved = useCase();
   const loyalty = useLoyalty();
-  const [error, setError] = useState("");
+  // A failure belongs to the case it happened on: a new case starts clean.
+  const caseKey = saved ? saved.createdAt : null;
+  const [failure, setFailure] = useState<{
+    key: string | null;
+    message: string;
+    otherCase?: boolean;
+  } | null>(null);
+  const current = failure && failure.key === caseKey ? failure : null;
+  const error = current && !current.otherCase ? current.message : "";
+  /** The session in the URL paid for a different bill: show this case's paywall. */
+  const otherCase = Boolean(current?.otherCase);
+  const setError = (message: string) => setFailure(message ? { key: caseKey, message } : null);
   const [starting, setStarting] = useState(false);
   const [toast, setToast] = useState("");
   const closeToast = useCallback(() => setToast(""), []);
-  const requested = useRef(false);
-  const stamped = useRef(false);
-  const redeemRequested = useRef(false);
+  // What each effect already asked the server for, so a session id is used
+  // once per case and never sticks to another case.
+  const requested = useRef<string | null>(null);
+  const stamped = useRef<string | null>(null);
+  const redeemRequested = useRef<string | null>(null);
   const active: TabId = isTab(tab) ? tab : "found";
 
-  const returning = Boolean(sessionId) && Boolean(saved) && !saved?.letters && !error;
+  const returning =
+    Boolean(sessionId) && Boolean(saved) && !saved?.letters && !error && !otherCase;
   const redeeming = Boolean(loyaltySession) && Boolean(saved) && !saved?.letters && !error;
   const free = Boolean(loyalty?.enabled && (loyalty.freeAvailable || loyalty.freePass));
 
   // Back from Stripe: the server stamps the loyalty card if the session is paid.
   useEffect(() => {
-    if (!sessionId || stamped.current) return;
-    stamped.current = true;
+    if (!sessionId || stamped.current === sessionId) return;
+    stamped.current = sessionId;
     fetch("/api/loyalty/stamp", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -105,8 +133,8 @@ export function ResultsView({
 
   // Back from the $0 card check: the server decides whether the free case opens.
   useEffect(() => {
-    if (!loyaltySession || !saved || redeemRequested.current) return;
-    redeemRequested.current = true;
+    if (!loyaltySession || !saved || redeemRequested.current === loyaltySession) return;
+    redeemRequested.current = loyaltySession;
     if (saved.letters) {
       router.replace("/results?tab=letters");
       return;
@@ -124,22 +152,31 @@ export function ResultsView({
       router.replace("/results?tab=letters");
     })()
       .catch((e: Error) => {
-        setError(e.message);
+        setFailure({ key: saved.createdAt, message: e.message });
         router.replace("/results?tab=letters");
       })
       .finally(() => void refreshLoyalty());
   }, [loyaltySession, saved, router]);
 
-  // Back from Stripe: verify the payment server-side and fetch the documents.
+  // Back from Stripe: the server checks that the session is paid for this
+  // bill and only then writes the documents. Nothing shows as paid before.
   useEffect(() => {
-    if (!sessionId || !saved || saved.letters || requested.current) return;
-    requested.current = true;
+    if (!sessionId || !saved || saved.letters) return;
+    const key = `${sessionId}|${saved.createdAt}`;
+    if (requested.current === key) return;
+    requested.current = key;
     fetchLetters(saved, sessionId)
       .then((letters) => {
         saveCase({ ...saved, letters });
         router.replace("/results?tab=letters");
       })
-      .catch((e: Error) => setError(e.message));
+      .catch((e: Error) => {
+        const other = e instanceof LettersError && e.code === "other_case";
+        setFailure({ key: saved.createdAt, message: e.message, otherCase: other });
+        // That payment was for another bill: drop its id from the URL and
+        // show this case's own paywall.
+        if (other) router.replace("/results?tab=letters");
+      });
   }, [sessionId, saved, router]);
 
   /** Tabs live in the URL so Back and shared links work. */
@@ -252,6 +289,11 @@ export function ResultsView({
         Pay $19 instead
       </TextButton>
     ) : null;
+  const otherCaseNote = otherCase ? (
+    <p className="border-l-2 border-action pl-3 text-caption font-semibold text-ink">
+      {OTHER_CASE_NOTE}
+    </p>
+  ) : null;
   const loyaltyCard = loyalty?.enabled ? (
     <LoyaltyCard stamps={loyalty.freePass ? 3 : loyalty.stamps} />
   ) : null;
@@ -308,7 +350,14 @@ export function ResultsView({
               </>
             )}
 
-            <div className="mt-8 flex flex-wrap items-center gap-4">
+            {!clean && !letters && otherCaseNote && (
+              <div className="mt-8 max-w-[520px]">{otherCaseNote}</div>
+            )}
+            <div
+              className={`flex flex-wrap items-center gap-4 ${
+                !clean && !letters && otherCaseNote ? "mt-4" : "mt-8"
+              }`}
+            >
               {clean ? (
                 <Button onClick={() => go("pay-less")}>See if you can pay less</Button>
               ) : letters ? (
@@ -414,6 +463,7 @@ export function ResultsView({
                   free={free}
                   payInstead={payInstead}
                   loyaltyCard={loyaltyCard}
+                  notice={otherCaseNote}
                   error={error}
                   onPayLess={() => go("pay-less")}
                 />
