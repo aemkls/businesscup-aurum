@@ -58,6 +58,7 @@ export function planMath(eob: Eob | null, plan: PlanInfo): Finding[] {
         `Deductible applied on the EOB: ${usd(eob.deductibleApplied)}`,
         `Expected patient share: ${usd(expected)}; EOB patient share: ${usd(charged)}`,
       ],
+      codes: [],
     },
   ];
 }

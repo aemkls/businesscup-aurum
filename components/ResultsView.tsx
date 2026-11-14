@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { saveCase, useCase, type StoredCase } from "@/lib/caseStore";
 import { usd } from "@/lib/engine/money";
+import { assistanceLetter } from "@/lib/letters/templates";
 import type { CaseLetters, Confidence, Finding } from "@/lib/types";
+import { AssistanceCheck } from "./AssistanceCheck";
+import { BillXray } from "./BillXray";
 import { LockedPreview } from "./LockedPreview";
 
 const CONFIDENCE: Record<Confidence, { label: string; className: string }> = {
@@ -18,7 +21,7 @@ async function fetchLetters(saved: StoredCase, sessionId: string | null): Promis
   const response = await fetch("/api/letters", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ sessionId, result: saved.result }),
+    body: JSON.stringify({ sessionId, result: saved.result, household: saved.household ?? null }),
   });
   const data = await response.json();
   if (!response.ok) throw new Error(data.error ?? "Could not prepare your documents.");
@@ -139,6 +142,10 @@ export function ResultsView({ sessionId }: { sessionId: string | null }) {
         ))}
       </ol>
 
+      {!clean && <BillXray bill={result.bill} findings={result.findings} />}
+
+      {!letters && <AssistanceCheck saved={saved} />}
+
       {!clean && !letters && (
         <section className="no-print mt-10 rounded-lg border border-accent bg-card p-6">
           <h2 className="text-xl font-semibold">Get this corrected</h2>
@@ -191,8 +198,16 @@ export function ResultsView({ sessionId }: { sessionId: string | null }) {
               <LetterBlock title="Dispute letter to the billing department" text={letters.providerLetter} open />
               <LetterBlock title="Appeal letter to your insurer" text={letters.insurerAppeal} />
               <LetterBlock title="Call script" text={letters.callScript} />
+              <LetterBlock
+                title="Financial assistance request"
+                text={
+                  // Answered after unlocking: build the request from the paid case locally.
+                  letters.assistanceLetter || assistanceLetter(result, saved.household ?? null)
+                }
+              />
             </div>
           </section>
+          <AssistanceCheck saved={saved} />
         </>
       )}
 

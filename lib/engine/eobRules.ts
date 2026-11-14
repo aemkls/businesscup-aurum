@@ -1,6 +1,13 @@
 import type { Bill, Eob, Finding, PlanInfo } from "../types";
 import { cents, usd } from "./money";
 
+/** Emergency department visit levels 1 to 5, plus critical care. */
+const EMERGENCY_CODES = new Set(["99281", "99282", "99283", "99284", "99285", "99291"]);
+
+function hasEmergencyVisit(bill: Bill): boolean {
+  return bill.lines.some((l) => EMERGENCY_CODES.has(l.code));
+}
+
 /**
  * A line the insurer refused to pay and pushed to the patient.
  * These can be appealed; most people never do.
@@ -28,6 +35,7 @@ export function deniedClaims(eob: Eob | null): Finding[] {
         `EOB: ${l.code} billed ${usd(l.billed)}, insurer paid ${usd(l.insurerPaid)}, you owe ${usd(l.patientResponsibility)}`,
         ...(l.denialReason ? [`Denial reason: ${l.denialReason}`] : []),
       ],
+      codes: [l.code],
     }));
 }
 
@@ -75,6 +83,26 @@ export function billVersusEob(
           ...evidence,
           `EOB: ${skipped.code} billed ${usd(skipped.billed)}, allowed ${usd(skipped.allowed)}`,
         ],
+        codes: [skipped.code],
+      },
+    ];
+  }
+
+  if (!plan.inNetwork && hasEmergencyVisit(bill)) {
+    return [
+      {
+        id: "surprise-bill",
+        type: "surprise_bill",
+        title: "Out-of-network emergency care billed above your EOB",
+        amount: gap,
+        confidence: "high",
+        target: "provider",
+        explanation:
+          `This was an emergency visit with an out-of-network provider. Under the federal No Surprises Act, ` +
+          `the provider can charge you only the in-network cost sharing shown on your EOB (${usd(eob.totalPatientResponsibility)}), ` +
+          `not the ${usd(gap)} balance on top of it.`,
+        evidence: [...evidence, "Emergency visit code on the bill; provider marked out-of-network"],
+        codes: bill.lines.filter((l) => EMERGENCY_CODES.has(l.code)).map((l) => l.code),
       },
     ];
   }
@@ -92,8 +120,9 @@ export function billVersusEob(
         `${usd(gap)} of that is not explained by anything on the EOB.` +
         (plan.inNetwork
           ? ""
-          : ` For emergency care, the federal No Surprises Act generally bars out-of-network providers from billing you above in-network cost sharing.`),
+          : ` Out-of-network providers can sometimes bill the difference, so ask them to itemize it.`),
       evidence,
+      codes: [],
     },
   ];
 }

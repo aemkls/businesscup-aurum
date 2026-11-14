@@ -8,7 +8,7 @@ const formatDate = (date: Date) =>
 
 /** The follow-up plan. Progress is saved in this browser. */
 export function CaseTracker({ saved }: { saved: StoredCase }) {
-  const steps = buildSteps(saved.result);
+  const steps = buildSteps(saved.result, saved.household);
   const doneCount = steps.filter((s) => saved.done[s.id]).length;
 
   function toggle(id: string) {

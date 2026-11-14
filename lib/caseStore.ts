@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useSyncExternalStore } from "react";
+import type { Household } from "./engine/assistance";
 import type { AnalysisResult, CaseLetters } from "./types";
 
 /**
@@ -14,6 +15,8 @@ export interface StoredCase {
   letters: CaseLetters | null;
   /** Tracker step id -> ISO date it was ticked off. */
   done: Record<string, string>;
+  /** Optional answers to the financial assistance check. */
+  household?: Household | null;
 }
 
 const KEY = "claimback.case.v1";

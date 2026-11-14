@@ -1,3 +1,4 @@
+import { assistanceTier, fplPercent, type Household } from "../engine/assistance";
 import { usd } from "../engine/money";
 import type { AnalysisResult, CaseLetters, Finding } from "../types";
 
@@ -85,11 +86,39 @@ export function callScript(result: AnalysisResult): string {
   return lines.join("\n");
 }
 
-export function templateLetters(result: AnalysisResult): CaseLetters {
+/** Request for the hospital's financial assistance policy and application. */
+export function assistanceLetter(result: AnalysisResult, household: Household | null): string {
+  if (!household) return "";
+  const percent = fplPercent(household);
+  if (assistanceTier(percent) === "unlikely") return "";
+  return `[Your full name]
+[Your address]
+[Date]
+
+${result.bill.provider}
+Financial Assistance / Patient Financial Services
+
+Re: Request for financial assistance, statement dated ${result.bill.statementDate || "[statement date]"}, account [account number]
+
+To whom it may concern,
+
+I am requesting to be screened for financial assistance for the account above. My household has ${household.size} ${household.size === 1 ? "person" : "people"} and an annual income of about ${usd(household.annualIncome)}, which is ${percent}% of the federal poverty guideline.
+
+Please send me your financial assistance policy, the plain-language summary and the application form, and tell me which documents you need. While my application is under review, please place the account on hold and do not refer it to collections or report it to a credit bureau.
+
+I have separately disputed billing errors on this account. Please apply any assistance to the corrected balance.
+
+Sincerely,
+[Your full name]
+[Phone or email]`;
+}
+
+export function templateLetters(result: AnalysisResult, household: Household | null = null): CaseLetters {
   return {
     providerLetter: providerLetter(result),
     insurerAppeal: insurerAppeal(result),
     callScript: callScript(result),
+    assistanceLetter: assistanceLetter(result, household),
     aiWritten: false,
   };
 }

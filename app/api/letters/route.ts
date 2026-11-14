@@ -1,5 +1,6 @@
 import { aiConfigured } from "@/lib/ai/client";
 import { writeLetters } from "@/lib/ai/letters";
+import { validHousehold } from "@/lib/engine/assistance";
 import { runEngine, summarize } from "@/lib/engine";
 import { templateLetters } from "@/lib/letters/templates";
 import { isPaid, paymentsConfigured } from "@/lib/payments";
@@ -17,6 +18,7 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as {
     sessionId?: unknown;
     result?: unknown;
+    household?: unknown;
   } | null;
   const parsed = resultSchema.safeParse(body?.result);
   if (!parsed.success) return Response.json({ error: "Invalid case data." }, { status: 400 });
@@ -39,6 +41,9 @@ export async function POST(request: Request) {
   }));
   const result: AnalysisResult = { ...input, findings, ...summarize(input.bill, findings) };
 
-  const letters = aiConfigured() ? await writeLetters(result, 40_000) : templateLetters(result);
+  const household = validHousehold(body?.household) ? body.household : null;
+  const letters = aiConfigured()
+    ? await writeLetters(result, household, 40_000)
+    : templateLetters(result, household);
   return Response.json({ letters, demo });
 }

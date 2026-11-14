@@ -1,3 +1,4 @@
+import { assistanceTier, fplPercent, type Household } from "./engine/assistance";
 import type { AnalysisResult } from "./types";
 
 /** One step of the dispute plan, due a number of days after the case started. */
@@ -9,7 +10,7 @@ export interface TrackerStep {
 }
 
 /** Builds the follow-up plan from what was actually found. */
-export function buildSteps(result: AnalysisResult): TrackerStep[] {
+export function buildSteps(result: AnalysisResult, household?: Household | null): TrackerStep[] {
   const toProvider = result.findings.some((f) => f.target === "provider");
   const toInsurer = result.findings.some((f) => f.target === "insurer");
   const steps: TrackerStep[] = [];
@@ -28,6 +29,14 @@ export function buildSteps(result: AnalysisResult): TrackerStep[] {
       dayOffset: 0,
       title: `File the appeal with ${result.eob.insurer}`,
       detail: "Use the appeals address or fax number printed on your EOB.",
+    });
+  }
+  if (household && assistanceTier(fplPercent(household)) !== "unlikely") {
+    steps.push({
+      id: "assistance",
+      dayOffset: 0,
+      title: "Request the financial assistance application",
+      detail: "Send the assistance letter, then return the form with proof of income as soon as it arrives.",
     });
   }
   steps.push(

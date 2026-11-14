@@ -1,4 +1,5 @@
 import { templateLetters } from "../letters/templates";
+import type { Household } from "../engine/assistance";
 import type { AnalysisResult, CaseLetters } from "../types";
 import { generateJson } from "./client";
 import { usesOnlyKnownAmounts } from "./guard";
@@ -18,9 +19,10 @@ Do not threaten legal action. If a draft is empty, return an empty string for it
  */
 export async function writeLetters(
   result: AnalysisResult,
+  household: Household | null,
   budgetMs: number,
 ): Promise<CaseLetters> {
-  const drafts = templateLetters(result);
+  const drafts = templateLetters(result, household);
   try {
     const { data } = await generateJson({
       system: SYSTEM,
@@ -49,7 +51,7 @@ export async function writeLetters(
       letters.providerLetter !== drafts.providerLetter ||
       letters.insurerAppeal !== drafts.insurerAppeal ||
       letters.callScript !== drafts.callScript;
-    return { ...letters, aiWritten };
+    return { ...letters, assistanceLetter: drafts.assistanceLetter, aiWritten };
   } catch {
     return drafts;
   }

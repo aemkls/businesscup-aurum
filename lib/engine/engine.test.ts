@@ -105,3 +105,42 @@ describe("bill above EOB with no matching line", () => {
     expect(gap?.amount).toBe(235);
   });
 });
+
+describe("out-of-network emergency visit", () => {
+  // The insurer applied in-network cost sharing (as the No Surprises Act requires),
+  // the provider billed the patient for the rest.
+  const eob: Eob = {
+    ...sampleEob,
+    lines: sampleEob.lines.filter((l) => l.status === "paid"),
+    deductibleApplied: 1000,
+    totalPatientResponsibility: 1182.8,
+  };
+  const bill: Bill = {
+    ...sampleBill,
+    lines: [sampleBill.lines[0]],
+    amountDue: 2400,
+  };
+  const findings = runEngine(bill, eob, { ...samplePlan, inNetwork: false });
+
+  it("flags the balance as a surprise bill, not a generic gap", () => {
+    const surprise = findings.find((f) => f.type === "surprise_bill");
+    expect(surprise?.amount).toBe(1217.2);
+    expect(surprise?.codes).toEqual(["99284"]);
+    expect(findings.some((f) => f.type === "bill_exceeds_eob")).toBe(false);
+  });
+});
+
+describe("finding codes", () => {
+  it("point at the bill lines each finding is about", () => {
+    const codes = Object.fromEntries(
+      runEngine(sampleBill, sampleEob, samplePlan).map((f) => [f.type, f.codes]),
+    );
+    expect(codes).toMatchObject({
+      duplicate_charge: ["70450"],
+      quantity_anomaly: ["36415"],
+      balance_billing: ["93005"],
+      denied_claim: ["71046"],
+      plan_math: [],
+    });
+  });
+});

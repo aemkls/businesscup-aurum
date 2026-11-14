@@ -71,7 +71,8 @@ export type FindingType =
   | "balance_billing"
   | "bill_exceeds_eob"
   | "plan_math"
-  | "denied_claim";
+  | "denied_claim"
+  | "surprise_bill";
 
 export type Confidence = "high" | "medium" | "low";
 
@@ -90,6 +91,8 @@ export interface Finding {
   explanation: string;
   /** Facts from the documents that support the finding. */
   evidence: string[];
+  /** Billing codes of the bill lines this finding is about (for the annotated bill). */
+  codes: string[];
 }
 
 export interface AnalysisMeta {
@@ -120,5 +123,7 @@ export interface CaseLetters {
   providerLetter: string;
   insurerAppeal: string; // "" when there is nothing to appeal with the insurer
   callScript: string;
+  /** Request for charity care, "" when the household does not look eligible. */
+  assistanceLetter: string;
   aiWritten: boolean;
 }

@@ -58,6 +58,7 @@ export function duplicateCharges(bill: Bill, eob: Eob | null): Finding[] {
         `Bill: ${lines.length} x ${label} on ${first.date}, ${usd(first.charge)} each`,
         ...(onEob === null ? [] : [`EOB: ${onEob} line(s) with code ${first.code}`]),
       ],
+      codes: [first.code],
     });
   }
   return findings;
@@ -93,6 +94,7 @@ export function quantityAnomaly(bill: Bill, eob: Eob | null): Finding[] {
         `Bill: ${line.code} x ${line.quantity} = ${usd(line.charge)} (${usd(unit)} each)`,
         ...(eobLine ? [`EOB: ${line.code} billed ${usd(eobLine.billed)}`] : []),
       ],
+      codes: [line.code],
     });
   }
   return findings;

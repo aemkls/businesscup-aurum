@@ -25,6 +25,7 @@ export const resultSchema = z.object({
           "bill_exceeds_eob",
           "plan_math",
           "denied_claim",
+          "surprise_bill",
         ]),
         title: z.string().max(300),
         amount: z.number(),
@@ -32,6 +33,7 @@ export const resultSchema = z.object({
         target: z.enum(["provider", "insurer"]),
         explanation: z.string().max(2000),
         evidence: z.array(z.string().max(500)).max(12),
+        codes: z.array(z.string().max(20)).max(40),
       }),
     )
     .max(40),
