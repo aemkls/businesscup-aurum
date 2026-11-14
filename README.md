@@ -63,6 +63,19 @@ npm run lint
 | `GEMINI_MODEL` | no | Model tried first. Default order: `gemini-3.5-flash`, `gemini-3.1-flash-lite`, then the `-latest` aliases. |
 | `STRIPE_SECRET_KEY` | no | Stripe **test** key `sk_test_...`. Without it the unlock runs in demo mode (free). |
 | `STRIPE_PRICE_ID` | no | A Price from the Stripe dashboard. Without it Checkout charges an inline $19. |
+| `LOYALTY_SECRET` | no | Signs the loyalty card cookie (`openssl rand -hex 32`). Without it, or without `STRIPE_SECRET_KEY`, the loyalty card is off. |
+
+## Loyalty card: every 4th case is free
+
+No accounts and no database, so the card is split in two. Each paid Checkout
+session stamps an httpOnly cookie signed with `LOYALTY_SECRET` (session id,
+PaymentIntent id, card fingerprint; one stamp per session). With 3 stamps the
+4th case opens through a $0 Stripe Checkout in setup mode: the server checks
+the signature, that each stamped session is paid, that none of their
+PaymentIntents carries `metadata.loyalty_redeemed`, and that the confirmed
+card has the same fingerprint as all 3 payments. Then it marks the 3
+PaymentIntents as redeemed in Stripe, empties the card and issues a signed
+free pass that `/api/letters` accepts once. Logic and tests: `lib/loyalty.ts`.
 
 ## Try the upload path
 
@@ -79,7 +92,7 @@ redeploy. Payments use Stripe Checkout in test mode: card `4242 4242 4242 4242`.
 ## Project layout
 
 ```
-app/              pages (landing, check, results, case) and API routes (analyze, checkout, letters)
+app/              pages (landing, check, results, case) and API routes (analyze, checkout, letters, loyalty)
 components/       client components; components/results/ holds the results tabs
 components/ui.tsx buttons, bands, cards and chips from docs/DESIGN.md
 lib/engine/       deterministic rules + tests (all dollar amounts come from here)

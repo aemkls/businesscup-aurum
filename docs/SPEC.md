@@ -100,6 +100,14 @@ pen; everything else stays calm.
 - Back on `/results?session_id=…`, `POST /api/letters` checks with Stripe
   that the session is paid, recomputes the findings and only then writes the
   letters. Without `STRIPE_SECRET_KEY` the deployment runs in demo mode.
+- **Loyalty card: every 4th case is free.** A first-visit notice explains it
+  ("Got it" hides it for good). Next to the pay button: 4 stamp circles, the
+  4th marked Free, and the terms (same card, same browser; wallets may not
+  count). Each paid case adds a stamp ("Stamp 2 of 3 added"); with 3 the
+  button turns into **Unlock free with your loyalty card**, a $0 Stripe setup
+  checkout where the user confirms the same card. The server decides; the
+  stamps live in a signed cookie, the redemption marks in Stripe metadata.
+  Off without `LOYALTY_SECRET` or in demo mode.
 - Personal details (name, address, phone or email, hospital account number,
   member ID) are filled into the letters in the browser and stored only in
   `localStorage`. Printing shows only the letters, one per page.
