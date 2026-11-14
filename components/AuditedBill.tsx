@@ -59,6 +59,8 @@ export function AuditedBill({
           <ol className="mt-1">
             {bill.lines.map((line, row) => {
               const mark = markup.lines[row];
+              // A low-confidence finding is a question, not an error: a dashed pen box, no marker.
+              const asking = mark ? findings[mark.finding]?.confidence === "low" : false;
               const at = mark ? next() : 0;
               return (
                 <li key={row} className="py-[3px]">
@@ -66,7 +68,9 @@ export function AuditedBill({
                     {mark && (
                       <span
                         aria-hidden="true"
-                        className="mark-marker absolute inset-y-0 left-6 right-0 -z-10 -skew-x-6 rounded-[2px] bg-marker sm:left-7"
+                        className={`mark-marker absolute inset-y-0 left-6 right-0 -z-10 rounded-[2px] sm:left-7 ${
+                          asking ? "border border-dashed border-pen" : "-skew-x-6 bg-marker"
+                        }`}
                         style={delay(at)}
                       />
                     )}
@@ -108,7 +112,7 @@ export function AuditedBill({
                       </span>
                     </span>
                   </div>
-                  {mark && <MarginNote mark={mark} at={at + 420} />}
+                  {mark && <MarginNote mark={mark} asking={asking} at={at + 420} />}
                 </li>
               );
             })}
@@ -124,7 +128,9 @@ export function AuditedBill({
                       <FindingNumber n={note.finding + 1} at={at} />
                     </span>
                     <Hand at={at + 150} className="col-span-3 -rotate-1 sm:col-span-4">
-                      {note.note}: {usd(note.amount)}
+                      {findings[note.finding]?.confidence === "low"
+                        ? `worth asking: ${note.note} ${usd(note.amount)}`
+                        : `${note.note}: ${usd(note.amount)}`}
                     </Hand>
                   </li>
                 );
@@ -173,13 +179,13 @@ function Hand({
   );
 }
 
-function MarginNote({ mark, at }: { mark: LineMark; at: number }) {
+function MarginNote({ mark, asking, at }: { mark: LineMark; asking: boolean; at: number }) {
   return (
     <div className={`${GRID} -mt-0.5`}>
       <span />
       <span className="hidden sm:block" />
       <Hand at={at} className="col-span-2 -rotate-1">
-        {mark.note}
+        {asking ? `worth asking: ${mark.note}` : mark.note}
       </Hand>
       <span className="text-right">
         {mark.correctedCharge != null && <Hand at={at + 120}>{usd(mark.correctedCharge)}</Hand>}
@@ -209,10 +215,11 @@ function FindingNumber({ n, at }: { n: number; at: number }) {
           style={delay(at)}
         />
       </svg>
+      {/* The digit is set, not handwritten: a Caveat "1" at this size reads as a dot. */}
       <span
         aria-hidden="true"
-        className="mark-write relative font-hand text-[19px] font-medium leading-none text-pen"
-        style={delay(at + 150)}
+        className="mark-marker relative font-display text-[14px] font-bold leading-none text-pen"
+        style={delay(at)}
       >
         {n}
       </span>

@@ -68,7 +68,7 @@ function FindingNote({
       <div>
         <div className="flex items-start justify-between gap-4 sm:block">
           <h3 className="text-body font-semibold">{finding.title}</h3>
-          <span className="font-mono text-body font-semibold sm:hidden">{usd(finding.amount)}</span>
+          <Amount finding={finding} className="text-body sm:hidden" />
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
           <Chip tone={confidence.tone}>{confidence.label}</Chip>
@@ -99,10 +99,21 @@ function FindingNote({
           </ul>
         )}
       </div>
-      <span className="hidden font-mono text-tagline font-semibold sm:block">
-        {usd(finding.amount)}
-      </span>
+      <Amount finding={finding} className="hidden text-tagline sm:block" />
     </li>
+  );
+}
+
+/** Counted findings show their amount; a "worth asking" one shows it muted and not counted. */
+function Amount({ finding, className }: { finding: Finding; className: string }) {
+  if (finding.confidence !== "low") {
+    return <span className={`font-mono font-semibold ${className}`}>{usd(finding.amount)}</span>;
+  }
+  return (
+    <span className={`text-right font-mono text-ink-muted ${className}`}>
+      {usd(finding.amount)}
+      <span className="block font-sans text-fine">not counted</span>
+    </span>
   );
 }
 
@@ -123,7 +134,7 @@ export function CircledNumber({ n }: { n: number | string }) {
           strokeLinecap="round"
         />
       </svg>
-      <span className="font-hand text-[24px] font-medium leading-none text-pen">
+      <span className="font-display text-[16px] font-bold leading-none text-pen">
         <span className="sr-only">Finding </span>
         {n}
       </span>

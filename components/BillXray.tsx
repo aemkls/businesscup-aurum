@@ -79,7 +79,7 @@ export function BillXray({
       {current && (
         <div className="mt-4 border-l-2 border-pen pl-4" aria-live="polite">
           <p className="text-body font-semibold">
-            <span className="mr-2 font-hand text-[22px] text-pen">
+            <span className="mr-2 font-display font-bold text-pen">
               {findingNumber(selectedIndex)}
             </span>
             {current.title}
@@ -106,6 +106,8 @@ export function BillXray({
             {bill.lines.map((line, row) => {
               const lineMarks = marks[row];
               const bad = lineMarks.length > 0;
+              // Only "worth asking" findings on this line: a question, not an error.
+              const asking = bad && lineMarks.every((i) => findings[i].confidence === "low");
               const active = selectedIndex >= 0 && lineMarks.includes(selectedIndex);
               const select = () => onSelect(findings[lineMarks[0]].id);
               return (
@@ -125,7 +127,11 @@ export function BillXray({
                       : undefined
                   }
                   className={`border-b border-dashed border-rule last:border-0 ${
-                    bad ? "cursor-pointer bg-marker/70 hover:bg-marker" : ""
+                    bad
+                      ? asking
+                        ? "cursor-pointer outline-dashed outline-1 -outline-offset-2 outline-pen hover:bg-desk"
+                        : "cursor-pointer bg-marker/70 hover:bg-marker"
+                      : ""
                   } ${active ? "outline outline-2 -outline-offset-2 outline-action" : ""}`}
                 >
                   <td className="py-2.5 pl-2 pr-3 align-top">
@@ -138,6 +144,7 @@ export function BillXray({
                         {lineMarks.map((i) => (
                           <span key={i}>
                             {findingNumber(i)}. {SHORT_LABEL[findings[i].type]}
+                            {findings[i].confidence === "low" && " (worth asking)"}
                           </span>
                         ))}
                       </span>

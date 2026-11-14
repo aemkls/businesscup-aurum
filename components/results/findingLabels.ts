@@ -16,7 +16,8 @@ export const SHORT_LABEL: Record<Finding["type"], string> = {
 export const CONFIDENCE: Record<Confidence, { label: string; tone: "ok" | "marker" | "neutral" }> = {
   high: { label: "High confidence", tone: "ok" },
   medium: { label: "Medium confidence", tone: "marker" },
-  low: { label: "Low confidence", tone: "neutral" },
+  // Low-confidence findings are not counted in the total: a question to ask, not an error.
+  low: { label: "Worth asking", tone: "neutral" },
 };
 
 /** Findings are numbered 1, 2, 3 on the paper and in the list. */
