@@ -115,3 +115,40 @@ export async function createLoyaltySetupUrl(origin: string): Promise<string> {
   if (!session.url) throw new Error("Stripe did not return a checkout URL");
   return session.url;
 }
+
+/**
+ * The family plan: a yearly subscription at STRIPE_FAMILY_PRICE_ID, cards
+ * only. subscription_data.metadata marks it as a family plan from the start.
+ */
+export async function createFamilyCheckoutUrl(origin: string, price: string): Promise<string> {
+  const session = await stripe().checkout.sessions.create({
+    mode: "subscription",
+    line_items: [{ price, quantity: 1 }],
+    allowed_payment_method_types: ["card"],
+    adaptive_pricing: { enabled: false },
+    subscription_data: { metadata: { family_plan: "1" } },
+    success_url: `${origin}/results?family_session={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${origin}/results`,
+  });
+  if (!session.url) throw new Error("Stripe did not return a checkout URL");
+  return session.url;
+}
+
+/** "I have a family plan": a $0 card check; the server finds the plan by the card. */
+export async function createFamilyRestoreUrl(origin: string): Promise<string> {
+  const session = await stripe().checkout.sessions.create({
+    mode: "setup",
+    allowed_payment_method_types: ["card"],
+    currency: "usd",
+    success_url: `${origin}/results?family_restore={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${origin}/results`,
+  });
+  if (!session.url) throw new Error("Stripe did not return a checkout URL");
+  return session.url;
+}
+
+/** Stripe's billing portal for the plan's Customer: cancel, change the card, invoices. */
+export async function createPortalUrl(customer: string, returnUrl: string): Promise<string> {
+  const session = await stripe().billingPortal.sessions.create({ customer, return_url: returnUrl });
+  return session.url;
+}
