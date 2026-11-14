@@ -8,7 +8,7 @@ import type { AnalysisResult } from "@/lib/types";
  */
 export function LockedPreview({ result }: { result: AnalysisResult }) {
   const letter = [
-    `${result.bill.provider}`,
+    result.bill.provider,
     "Patient Billing Department",
     "",
     `Re: Dispute of statement dated ${result.bill.statementDate || "[date]"}`,
@@ -29,12 +29,12 @@ export function LockedPreview({ result }: { result: AnalysisResult }) {
   ].join("\n");
 
   return (
-    <div className="relative mt-6 grid gap-3 sm:grid-cols-2" aria-hidden="true">
+    <div className="relative grid gap-4 sm:grid-cols-2" aria-hidden="true">
       <Teaser title="Dispute letter" text={letter} />
       <Teaser title="Call script" text={script} />
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-white shadow">
-          Unlock to read and copy
+        <span className="rounded-full bg-tile-dark px-4 py-2 text-caption font-semibold text-on-dark">
+          Unlock to read, fill in and send
         </span>
       </div>
     </div>
@@ -43,9 +43,9 @@ export function LockedPreview({ result }: { result: AnalysisResult }) {
 
 function Teaser({ title, text }: { title: string; text: string }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-line bg-paper">
-      <p className="border-b border-line px-4 py-2 text-xs font-medium text-muted">{title}</p>
-      <pre className="pointer-events-none h-44 select-none whitespace-pre-wrap px-4 py-3 font-sans text-xs leading-relaxed blur-[3px]">
+    <div className="overflow-hidden rounded-[18px] bg-parchment">
+      <p className="px-5 pt-4 text-fine font-semibold text-ink-muted">{title}</p>
+      <pre className="pointer-events-none h-40 select-none whitespace-pre-wrap px-5 py-3 font-sans text-fine blur-[3px]">
         {text}
       </pre>
     </div>
