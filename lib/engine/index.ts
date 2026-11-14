@@ -3,6 +3,7 @@ import { duplicateCharges, quantityAnomaly } from "./billRules";
 import { billVersusEob, deniedClaims } from "./eobRules";
 import { cents, sum } from "./money";
 import { planMath } from "./planMath";
+import { preventiveCare } from "./preventive";
 
 /**
  * Runs every rule over the structured documents. Pure and deterministic:
@@ -18,6 +19,7 @@ export function runEngine(bill: Bill, eob: Eob | null, plan: PlanInfo): Finding[
     ...billVersusEob(bill, eob, plan, explained),
     ...planMath(eob, plan),
     ...deniedClaims(eob),
+    ...preventiveCare(bill, eob, plan),
   ];
   return findings.sort((a, b) => b.amount - a.amount);
 }
@@ -26,7 +28,9 @@ export function summarize(
   bill: Bill,
   findings: Finding[],
 ): Pick<AnalysisResult, "amountBilled" | "potentialSavings" | "fairAmount"> {
-  const potentialSavings = Math.min(sum(findings.map((f) => f.amount)), bill.amountDue);
+  // Low-confidence findings are worth asking about but are not counted as money back.
+  const counted = findings.filter((f) => f.confidence !== "low");
+  const potentialSavings = Math.min(sum(counted.map((f) => f.amount)), bill.amountDue);
   return {
     amountBilled: bill.amountDue,
     potentialSavings,

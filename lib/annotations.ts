@@ -44,6 +44,8 @@ const NOTE: Record<Finding["type"], string> = {
   plan_math: "insurer math is off",
   denied_claim: "insurer denied — appeal",
   surprise_bill: "surprise bill",
+  preventive_cost_sharing: "preventive = $0",
+  split_visit: "split visit?",
 };
 
 export function markUpBill(bill: Bill, findings: Finding[], fairAmount: number): BillMarkup {

@@ -9,6 +9,8 @@ export const SHORT_LABEL: Record<Finding["type"], string> = {
   plan_math: "Plan math",
   denied_claim: "Denied, appealable",
   surprise_bill: "Surprise bill",
+  preventive_cost_sharing: "Should be free",
+  split_visit: "Split visit",
 };
 
 export const CONFIDENCE: Record<Confidence, { label: string; tone: "ok" | "marker" | "neutral" }> = {

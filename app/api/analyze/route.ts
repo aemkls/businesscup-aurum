@@ -1,3 +1,4 @@
+import { physicalBill, physicalEob, physicalPlan } from "@/data/samples/physical";
 import { sampleBill, sampleEob, samplePlan } from "@/data/samples/sample";
 import { AiUnavailableError, aiConfigured } from "@/lib/ai/client";
 import { explainFindings } from "@/lib/ai/explain";
@@ -54,7 +55,13 @@ export async function POST(request: Request) {
   } catch {
     return fail(400, "Invalid form data.");
   }
-  const isSample = form.get("sample") === "1";
+  // "1" or "er": the ER visit; "physical": the "free" annual physical.
+  const sampleKind = String(form.get("sample") ?? "");
+  const isSample = ["1", "er", "physical"].includes(sampleKind);
+  const sampleCase =
+    sampleKind === "physical"
+      ? { bill: physicalBill, eob: physicalEob, plan: physicalPlan }
+      : { bill: sampleBill, eob: sampleEob, plan: samplePlan };
 
   let planInput: unknown;
   try {
@@ -62,17 +69,17 @@ export async function POST(request: Request) {
   } catch {
     return fail(400, "Plan details are missing.");
   }
-  const plan = planSchema.safeParse(isSample && !planInput ? samplePlan : planInput);
+  const plan = planSchema.safeParse(isSample && !planInput ? sampleCase.plan : planInput);
   if (!plan.success) return fail(400, "Check the plan numbers and try again.");
 
   let billDoc: DocumentInput | null;
   let eobDoc: DocumentInput | null;
   try {
     billDoc = isSample
-      ? { kind: "text", text: billToText(sampleBill) }
+      ? { kind: "text", text: billToText(sampleCase.bill) }
       : await readUpload(form.get("bill"));
     eobDoc = isSample
-      ? { kind: "text", text: eobToText(sampleEob) }
+      ? { kind: "text", text: eobToText(sampleCase.eob) }
       : await readUpload(form.get("eob"));
   } catch (error) {
     return fail(400, (error as Error).message);
@@ -99,8 +106,8 @@ export async function POST(request: Request) {
     }
     // The sample must always work: fall back to its structured source.
     // The engine below still computes every finding from scratch.
-    bill = sampleBill;
-    eob = sampleEob;
+    bill = sampleCase.bill;
+    eob = sampleCase.eob;
     aiExtraction = false;
   }
 

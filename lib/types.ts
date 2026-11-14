@@ -72,7 +72,9 @@ export type FindingType =
   | "bill_exceeds_eob"
   | "plan_math"
   | "denied_claim"
-  | "surprise_bill";
+  | "surprise_bill"
+  | "preventive_cost_sharing"
+  | "split_visit";
 
 export type Confidence = "high" | "medium" | "low";
 

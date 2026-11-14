@@ -2,6 +2,7 @@
 
 import { useMemo, useSyncExternalStore } from "react";
 import type { Household } from "./engine/assistance";
+import type { Situation } from "./features/situation";
 import type { AnalysisResult, CaseLetters } from "./types";
 
 /**
@@ -17,6 +18,8 @@ export interface StoredCase {
   done: Record<string, string>;
   /** Optional answers to the financial assistance check. */
   household?: Household | null;
+  /** Optional answers that unlock the extra checks in the action plan. */
+  situation?: Situation;
 }
 
 const KEY = "claimback.case.v1";

@@ -1,5 +1,6 @@
 import type { Eob, Finding, PlanInfo } from "../types";
 import { cents, sum, usd } from "./money";
+import { isPreventiveCode } from "./preventive";
 
 /**
  * What the patient should owe for a covered, in-network allowed amount:
@@ -26,7 +27,10 @@ export function expectedPatientShare(allowed: number, plan: PlanInfo): number {
  */
 export function planMath(eob: Eob | null, plan: PlanInfo): Finding[] {
   if (!eob) return [];
-  const covered = eob.lines.filter((l) => l.status === "paid");
+  // Preventive lines are $0 by law in-network; the preventive rule checks them.
+  const covered = eob.lines.filter(
+    (l) => l.status === "paid" && !(plan.inNetwork && isPreventiveCode(l.code)),
+  );
   if (covered.length === 0) return [];
 
   const allowed = sum(covered.map((l) => l.allowed));

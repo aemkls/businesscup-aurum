@@ -26,6 +26,8 @@ export const resultSchema = z.object({
           "plan_math",
           "denied_claim",
           "surprise_bill",
+          "preventive_cost_sharing",
+          "split_visit",
         ]),
         title: z.string().max(300),
         amount: z.number(),
