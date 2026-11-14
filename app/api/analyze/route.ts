@@ -30,6 +30,14 @@ function mimeTypeOf(file: File): string {
   return ext === "heic" || ext === "heif" ? `image/${ext}` : "";
 }
 
+/**
+ * The sample documents never change, so a sample run that the AI has already
+ * read is kept in memory for a while. The first click of a fresh server goes
+ * through the full pipeline; repeated clicks do not spend AI quota.
+ */
+const SAMPLE_TTL_MS = 30 * 60 * 1000;
+const sampleCache = new Map<string, { at: number; result: AnalysisResult }>();
+
 const fail = (status: number, error: string) => Response.json({ error }, { status });
 
 /** Uploaded files are read into memory for the AI call and never stored. */
@@ -71,6 +79,10 @@ export async function POST(request: Request) {
   }
   const plan = planSchema.safeParse(isSample && !planInput ? sampleCase.plan : planInput);
   if (!plan.success) return fail(400, "Check the plan numbers and try again.");
+
+  const cacheKey = isSample ? `${sampleKind === "physical" ? "physical" : "er"}:${JSON.stringify(plan.data)}` : null;
+  const cached = cacheKey ? sampleCache.get(cacheKey) : undefined;
+  if (cached && Date.now() - cached.at < SAMPLE_TTL_MS) return Response.json(cached.result);
 
   let billDoc: DocumentInput | null;
   let eobDoc: DocumentInput | null;
@@ -129,5 +141,7 @@ export async function POST(request: Request) {
       hasEob: eob !== null,
     },
   };
+  // Remember a sample read by the AI, so repeated demo clicks answer at once.
+  if (cacheKey && aiExtraction) sampleCache.set(cacheKey, { at: Date.now(), result });
   return Response.json(result);
 }
