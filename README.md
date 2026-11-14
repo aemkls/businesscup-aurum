@@ -61,7 +61,7 @@ npm run lint
 |---|---|---|
 | `GEMINI_API_KEY` | yes | Google AI Studio key. Server-side only. |
 | `GEMINI_MODEL` | no | Model tried first. Default order: `gemini-3.5-flash`, `gemini-3.1-flash-lite`, then the `-latest` aliases. |
-| `STRIPE_SECRET_KEY` | no | Stripe **test** key `sk_test_...`. Without it the unlock runs in demo mode (free). |
+| `STRIPE_SECRET_KEY` | no | Stripe **test** key `sk_test_...`. Without it the unlock runs in demo mode (free). With it, one payment opens one bill: the bill's hash is stored in the PaymentIntent metadata (`lib/caseHash.ts`, `unlockPaidCase` in `lib/payments.ts`). |
 | `STRIPE_PRICE_ID` | no | A Price from the Stripe dashboard. Without it Checkout charges an inline $19. |
 | `LOYALTY_SECRET` | no | Signs the loyalty card cookie (`openssl rand -hex 32`). Without it, or without `STRIPE_SECRET_KEY`, the loyalty card is off. |
 

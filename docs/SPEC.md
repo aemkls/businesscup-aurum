@@ -100,6 +100,12 @@ pen; everything else stays calm.
 - Back on `/results?session_id=…`, `POST /api/letters` checks with Stripe
   that the session is paid, recomputes the findings and only then writes the
   letters. Without `STRIPE_SECRET_KEY` the deployment runs in demo mode.
+- **One payment = one case.** The first time a paid session opens letters,
+  the bill's fingerprint (`caseHash`: provider, statement date, lines, amount
+  due) is written to the PaymentIntent's metadata (`case_hash`). The same
+  session reopens that bill any time; another bill gets 402 `other_case`, and
+  the results show that case's own paywall with "Your last payment unlocked a
+  different bill. This one is a new case."
 - **Loyalty card: every 4th case is free.** A first-visit notice explains it
   ("Got it" hides it for good). Next to the pay button: 4 stamp circles, the
   4th marked Free, and the terms (same card, same browser; wallets may not
