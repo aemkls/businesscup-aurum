@@ -8,7 +8,8 @@ import { usd } from "@/lib/engine/money";
 import type { CaseLetters } from "@/lib/types";
 import { AssistanceCheck } from "./AssistanceCheck";
 import { BillXray } from "./BillXray";
-import { FindingsTab } from "./results/FindingsTab";
+import { CircledNumber, FindingsTab } from "./results/FindingsTab";
+import { SHORT_LABEL } from "./results/findingLabels";
 import { LettersTab } from "./results/LettersTab";
 import { TabPanel, Tabs, type TabItem } from "./results/Tabs";
 import { AuditedBill } from "./AuditedBill";
@@ -190,6 +191,28 @@ export function ResultsView({
                 </>
               )}
             </div>
+            {!clean && (
+              <ol
+                className="mt-10 hidden max-w-[520px] space-y-2 lg:block"
+                aria-label="Findings marked on your bill"
+              >
+                {result.findings.map((f, i) => (
+                  <li key={f.id}>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        go(f.codes.length > 0 ? "bill" : "found", f.codes.length > 0 ? f.id : null)
+                      }
+                      className="flex w-full items-center gap-3 text-left text-caption hover:text-action"
+                    >
+                      <CircledNumber n={i + 1} />
+                      <span className="flex-1">{SHORT_LABEL[f.type]}</span>
+                      <span className="font-mono">{usd(f.amount)}</span>
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            )}
             {error && active !== "letters" && (
               <div className="mt-6 max-w-[520px]">
                 <ErrorNote>{error}</ErrorNote>

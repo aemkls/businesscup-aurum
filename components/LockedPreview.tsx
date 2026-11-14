@@ -35,17 +35,17 @@ export function LockedPreview({
   ].join("\n");
 
   return (
-    <div className="relative overflow-hidden rounded-[10px] bg-desk px-3 pb-6 pt-8 sm:px-10 sm:pt-10">
+    <div className="relative overflow-hidden rounded-[10px] bg-desk px-3 pb-4 pt-6 sm:px-8 sm:pb-8 sm:pt-8">
       <div
         aria-hidden="true"
-        className="relative mx-auto h-[400px] max-w-[520px] select-none sm:h-[380px]"
+        className="relative h-[260px] w-full max-w-[520px] select-none sm:h-[360px] sm:w-[62%]"
       >
         <Sheet text={script} className="left-6 top-6 rotate-[3deg]" />
         <Sheet text={letter} className="left-3 top-3 -rotate-[2deg]" />
         <Sheet text={letter} className="left-0 top-0" />
       </div>
-      <div className="absolute inset-x-3 bottom-4 flex justify-center sm:inset-x-10 sm:bottom-6">
-        <div className="w-full max-w-[460px] rounded-[14px] border border-white/70 bg-white/55 p-6 text-ink backdrop-blur-md">
+      <div className="relative -mt-24 sm:absolute sm:bottom-8 sm:right-8 sm:mt-0 sm:w-[420px]">
+        <div className="rounded-[14px] border border-white/70 bg-white/60 p-6 text-ink backdrop-blur-md">
           {children}
         </div>
       </div>
