@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { saveCase, useCase, type StoredCase } from "@/lib/caseStore";
 import { usd } from "@/lib/engine/money";
+import { refreshLoyalty, useLoyalty } from "@/lib/loyaltyClient";
 import type { CaseLetters } from "@/lib/types";
 import { AssistanceCheck } from "./AssistanceCheck";
 import { BillXray } from "./BillXray";
@@ -13,6 +14,7 @@ import { SHORT_LABEL } from "./results/findingLabels";
 import { LettersTab } from "./results/LettersTab";
 import { TabPanel, Tabs, type TabItem } from "./results/Tabs";
 import { AuditedBill } from "./AuditedBill";
+import { LoyaltyCard, Toast } from "./Loyalty";
 import { NextSteps } from "./NextSteps";
 import { Button, ButtonLink, ErrorNote, Section, TextButton } from "./ui";
 
@@ -39,23 +41,94 @@ async function fetchLetters(saved: StoredCase, sessionId: string | null): Promis
   return data.letters as CaseLetters;
 }
 
+const FREE_UNLOCKED = "Your free case is unlocked. Your loyalty card starts again.";
+
+/** What to tell the user after a payment stamped (or did not stamp) the card. */
+function stampMessage(data: { outcome?: string; stamps?: number }): string {
+  if (data.outcome === "added" && data.stamps) {
+    return data.stamps >= 3
+      ? "Stamp 3 of 3 added. Your next case is free."
+      : `Stamp ${data.stamps} of 3 added`;
+  }
+  if (data.outcome === "restarted") {
+    return "Stamp 1 of 3 added. A different card starts a new loyalty card.";
+  }
+  if (data.outcome === "full") return "Your loyalty card is full. Your next case is free.";
+  return "";
+}
+
 export function ResultsView({
   sessionId,
+  loyaltySession,
   tab,
   finding,
 }: {
   sessionId: string | null;
+  /** Back from the loyalty card's $0 card check. */
+  loyaltySession: string | null;
   tab: string | null;
   finding: string | null;
 }) {
   const router = useRouter();
   const saved = useCase();
+  const loyalty = useLoyalty();
   const [error, setError] = useState("");
   const [starting, setStarting] = useState(false);
+  const [toast, setToast] = useState("");
+  const closeToast = useCallback(() => setToast(""), []);
   const requested = useRef(false);
+  const stamped = useRef(false);
+  const redeemRequested = useRef(false);
   const active: TabId = isTab(tab) ? tab : "found";
 
   const returning = Boolean(sessionId) && Boolean(saved) && !saved?.letters && !error;
+  const redeeming = Boolean(loyaltySession) && Boolean(saved) && !saved?.letters && !error;
+  const free = Boolean(loyalty?.enabled && (loyalty.freeAvailable || loyalty.freePass));
+
+  // Back from Stripe: the server stamps the loyalty card if the session is paid.
+  useEffect(() => {
+    if (!sessionId || stamped.current) return;
+    stamped.current = true;
+    fetch("/api/loyalty/stamp", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ sessionId }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        const message = stampMessage(data);
+        if (message) setToast(message);
+      })
+      .catch(() => {})
+      .finally(() => void refreshLoyalty());
+  }, [sessionId]);
+
+  // Back from the $0 card check: the server decides whether the free case opens.
+  useEffect(() => {
+    if (!loyaltySession || !saved || redeemRequested.current) return;
+    redeemRequested.current = true;
+    if (saved.letters) {
+      router.replace("/results?tab=letters");
+      return;
+    }
+    (async () => {
+      const response = await fetch("/api/loyalty/redeem/finish", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ setupSessionId: loyaltySession }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error ?? "Could not check your loyalty card.");
+      saveCase({ ...saved, letters: await fetchLetters(saved, null) });
+      setToast(FREE_UNLOCKED);
+      router.replace("/results?tab=letters");
+    })()
+      .catch((e: Error) => {
+        setError(e.message);
+        router.replace("/results?tab=letters");
+      })
+      .finally(() => void refreshLoyalty());
+  }, [loyaltySession, saved, router]);
 
   // Back from Stripe: verify the payment server-side and fetch the documents.
   useEffect(() => {
@@ -97,6 +170,33 @@ export function ResultsView({
     setStarting(false);
   }
 
+  /** The 4th case: confirm the same card in a $0 Stripe checkout. */
+  async function unlockFree() {
+    if (!saved) return;
+    setStarting(true);
+    setError("");
+    try {
+      if (loyalty?.freePass) {
+        // The card check already passed; only the letters are missing.
+        saveCase({ ...saved, letters: await fetchLetters(saved, null) });
+        setToast(FREE_UNLOCKED);
+        void refreshLoyalty();
+        go("letters");
+      } else {
+        const response = await fetch("/api/loyalty/redeem/start", { method: "POST" });
+        const data = await response.json().catch(() => ({}));
+        if (data.url) {
+          window.location.href = data.url as string;
+          return;
+        }
+        throw new Error(data.error ?? "Could not start the card check.");
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong.");
+    }
+    setStarting(false);
+  }
+
   if (saved === undefined) {
     return (
       <Section>
@@ -131,11 +231,30 @@ export function ResultsView({
     .filter((f) => f.confidence === "low")
     .reduce((total, f) => total + f.amount, 0);
 
+  const busy = starting || returning || redeeming;
   const unlockButton = (
-    <Button onClick={unlock} disabled={starting || returning}>
-      {returning ? "Confirming your payment…" : starting ? "One moment…" : "Unlock my case for $19"}
+    <Button onClick={free ? unlockFree : unlock} disabled={busy}>
+      {returning
+        ? "Confirming your payment…"
+        : redeeming
+          ? "Checking your card…"
+          : starting
+            ? "One moment…"
+            : free
+              ? "Unlock free with your loyalty card"
+              : "Unlock my case for $19"}
     </Button>
   );
+  // With a full card the user can still pay, e.g. with another card.
+  const payInstead =
+    free && !loyalty?.freePass ? (
+      <TextButton onClick={unlock} disabled={busy}>
+        Pay $19 instead
+      </TextButton>
+    ) : null;
+  const loyaltyCard = loyalty?.enabled ? (
+    <LoyaltyCard stamps={loyalty.freePass ? 3 : loyalty.stamps} />
+  ) : null;
 
   return (
     <>
@@ -198,11 +317,17 @@ export function ResultsView({
                 <>
                   {unlockButton}
                   <span className="text-caption text-ink-muted">
-                    Letters, appeal and call script. $19 once.
+                    {free
+                      ? "Letters, appeal and call script. Free with your loyalty card."
+                      : "Letters, appeal and call script. $19 once."}
                   </span>
+                  {payInstead}
                 </>
               )}
             </div>
+            {!clean && !letters && loyaltyCard && (
+              <div className="mt-4 max-w-[520px]">{loyaltyCard}</div>
+            )}
             {!clean && (
               <ol
                 className="mt-10 hidden max-w-[520px] space-y-2 lg:block"
@@ -286,12 +411,19 @@ export function ResultsView({
                 <LettersTab
                   saved={saved}
                   unlockButton={unlockButton}
+                  free={free}
+                  payInstead={payInstead}
+                  loyaltyCard={loyaltyCard}
                   error={error}
                   onPayLess={() => go("pay-less")}
                 />
               )}
               {active === "pay-less" && <AssistanceCheck saved={saved} />}
             </TabPanel>
+          </div>
+
+          <div role="status" aria-live="polite">
+            {toast && <Toast message={toast} onClose={closeToast} />}
           </div>
 
           <div className="no-print mt-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

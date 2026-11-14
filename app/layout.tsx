@@ -5,6 +5,7 @@ import "@fontsource/ibm-plex-mono/600.css";
 import "@fontsource/caveat/500.css";
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import { LoyaltyNotice } from "@/components/Loyalty";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           </div>
         </header>
         <main className="flex flex-1 flex-col">{children}</main>
+        <LoyaltyNotice />
         <footer className="no-print border-t border-rule px-4 py-8 sm:px-6">
           <p className="mx-auto max-w-[1200px] text-fine text-ink-muted">
             ClaimBack is software, not a law firm or a medical provider. It does not give legal or

@@ -19,11 +19,18 @@ interface Doc extends PrintDoc {
 export function LettersTab({
   saved,
   unlockButton,
+  free = false,
+  payInstead = null,
+  loyaltyCard = null,
   error,
   onPayLess,
 }: {
   saved: StoredCase;
   unlockButton: React.ReactNode;
+  /** The loyalty card's free case is ready. */
+  free?: boolean;
+  payInstead?: React.ReactNode;
+  loyaltyCard?: React.ReactNode;
   error: string;
   onPayLess: () => void;
 }) {
@@ -55,11 +62,17 @@ export function LettersTab({
             <li>A call script: what to say and what to write down</li>
             <li>Your name, address and account numbers filled in</li>
           </ul>
-          <div className="mt-5">{unlockButton}</div>
+          <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
+            {unlockButton}
+            {payInstead}
+          </div>
           <p className="mt-3 text-fine text-ink-muted">
-            $19 once, no subscription. Stripe test mode: card{" "}
+            {free
+              ? "Your 4th case is free: in Stripe you confirm the card you paid with, and nothing is charged. Test card "
+              : "$19 once, no subscription. Stripe test mode: card "}
             <span className="font-mono">4242 4242 4242 4242</span>, any future date, any CVC.
           </p>
+          {loyaltyCard && <div className="mt-4">{loyaltyCard}</div>}
         </LockedPreview>
         {error && <ErrorNote>{error}</ErrorNote>}
       </div>

@@ -35,16 +35,18 @@ export function LockedPreview({
   ].join("\n");
 
   return (
-    <div className="relative overflow-hidden rounded-[10px] bg-desk px-3 pb-4 pt-6 sm:px-8 sm:pb-8 sm:pt-8">
+    // From sm up the offer sits in the flow at the bottom right, so a taller
+    // offer grows the box instead of being clipped; the stack stays behind it.
+    <div className="relative overflow-hidden rounded-[10px] bg-desk px-3 pb-4 pt-6 sm:flex sm:min-h-[424px] sm:flex-col sm:justify-end sm:p-8">
       <div
         aria-hidden="true"
-        className="relative h-[260px] w-full max-w-[520px] select-none sm:h-[360px] sm:w-[62%]"
+        className="relative h-[260px] w-full max-w-[520px] select-none sm:absolute sm:left-8 sm:top-8 sm:h-[360px] sm:w-[calc(62%-40px)]"
       >
         <Sheet text={script} className="left-6 top-6 rotate-[3deg]" />
         <Sheet text={letter} className="left-3 top-3 -rotate-[2deg]" />
         <Sheet text={letter} className="left-0 top-0" />
       </div>
-      <div className="relative -mt-24 sm:absolute sm:bottom-8 sm:right-8 sm:mt-0 sm:w-[420px]">
+      <div className="relative -mt-24 sm:mt-0 sm:ml-auto sm:w-[420px]">
         <div className="rounded-[14px] border border-white/70 bg-white/60 p-6 text-ink backdrop-blur-md">
           {children}
         </div>

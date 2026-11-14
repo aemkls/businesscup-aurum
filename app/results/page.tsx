@@ -10,6 +10,7 @@ function ResultsFromUrl() {
   return (
     <ResultsView
       sessionId={params.get("session_id")}
+      loyaltySession={params.get("loyalty_session")}
       tab={params.get("tab")}
       finding={params.get("finding")}
     />
