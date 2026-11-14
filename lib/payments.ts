@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import type { StripeLike } from "./stripeLike";
 
 /**
  * Stripe Checkout, no webhooks and no database: the client comes back with a
@@ -50,13 +51,50 @@ export async function createCheckoutUrl(origin: string): Promise<string> {
   return session.url;
 }
 
-export async function isPaid(sessionId: string): Promise<boolean> {
+export const PAYMENT_NOT_FOUND = "Payment not found.";
+export const OTHER_CASE = "This payment was for a different bill. Each case is $19.";
+
+export type PaidCaseResult =
+  | { ok: true; /** true when this request bound the payment to the case */ bound: boolean }
+  | { ok: false; status: 402; code: "not_paid" | "other_case"; error: string };
+
+const NOT_PAID: PaidCaseResult = {
+  ok: false,
+  status: 402,
+  code: "not_paid",
+  error: PAYMENT_NOT_FOUND,
+};
+
+/**
+ * One payment opens one case. The first time a paid session unlocks letters,
+ * the case fingerprint (caseHash of the bill) is written to the metadata of
+ * its PaymentIntent; afterwards the same session opens only that bill
+ * (reloads, reopening from the tracker), and a different bill gets
+ * "other_case". One Stripe read, plus one write the first time.
+ */
+export async function unlockPaidCase(
+  client: StripeLike,
+  sessionId: string,
+  hash: string,
+  now = new Date(),
+): Promise<PaidCaseResult> {
+  let session: Stripe.Checkout.Session;
   try {
-    const session = await stripe().checkout.sessions.retrieve(sessionId);
-    return session.payment_status === "paid";
+    session = await client.checkout.sessions.retrieve(sessionId, { expand: ["payment_intent"] });
   } catch {
-    return false;
+    return NOT_PAID; // unknown or malformed session id
   }
+  const intent = typeof session.payment_intent === "object" ? session.payment_intent : null;
+  if (session.payment_status !== "paid" || !intent) return NOT_PAID;
+
+  const bound = intent.metadata?.case_hash;
+  if (bound === hash) return { ok: true, bound: false };
+  if (bound) return { ok: false, status: 402, code: "other_case", error: OTHER_CASE };
+
+  await client.paymentIntents.update(intent.id, {
+    metadata: { case_hash: hash, case_bound_at: now.toISOString() },
+  });
+  return { ok: true, bound: true };
 }
 
 /**

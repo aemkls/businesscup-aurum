@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type Stripe from "stripe";
+import type { StripeLike } from "./stripeLike";
 
 /**
  * Loyalty card: every 4th case is free.
@@ -53,19 +54,7 @@ interface FreePass {
 }
 
 /** The parts of the Stripe client the loyalty card uses; tests pass a fake. */
-export interface LoyaltyStripe {
-  checkout: {
-    sessions: {
-      retrieve(
-        id: string,
-        params?: Stripe.Checkout.SessionRetrieveParams,
-      ): Promise<Stripe.Checkout.Session>;
-    };
-  };
-  paymentIntents: {
-    update(id: string, params: Stripe.PaymentIntentUpdateParams): Promise<unknown>;
-  };
-}
+export type LoyaltyStripe = StripeLike;
 
 export function loyaltySecret(): string | null {
   return process.env.LOYALTY_SECRET || null;
