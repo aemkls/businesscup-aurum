@@ -3,8 +3,18 @@
 import { useState } from "react";
 import { saveCase, type StoredCase } from "@/lib/caseStore";
 import { downloadText } from "@/lib/download";
-import { buildIcs, buildSteps, sentDate, stepDueDate, type TrackerStep } from "@/lib/tracker";
-import { Button, TextButton } from "./ui";
+import { buildActionPlan } from "@/lib/features/actions";
+import { EMPTY_SITUATION } from "@/lib/features/situation";
+import {
+  buildIcs,
+  buildSteps,
+  dueDate,
+  isoToDate,
+  sentDate,
+  stepDueDate,
+  type FixedDeadline,
+} from "@/lib/tracker";
+import { Button, Chip, TextButton } from "./ui";
 
 const formatDate = (date: Date) =>
   date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
@@ -16,9 +26,51 @@ const formatDate = (date: Date) =>
  */
 export function CaseTracker({ saved }: { saved: StoredCase }) {
   const steps = buildSteps(saved.result, saved.household);
-  const doneCount = steps.filter((s) => saved.done[s.id]).length;
   const sent = sentDate(steps, saved.done);
-  const percent = Math.round((doneCount / steps.length) * 100);
+  // Hard deadlines from the Next steps plan (collections, appeals, estimates).
+  const deadlines: FixedDeadline[] = buildActionPlan(
+    saved.result,
+    saved.situation ?? EMPTY_SITUATION,
+    saved.household ?? null,
+  )
+    .filter((a) => a.deadline)
+    .map((a) => ({
+      id: `deadline-${a.id}`,
+      title: a.title,
+      detail: a.deadline!.label,
+      date: a.deadline!.date,
+    }));
+
+  // One timeline, in date order. Follow-ups not yet scheduled sort as if sent today.
+  const today = new Date().toISOString();
+  const items: TimelineItem[] = [
+    ...steps.map((step) => {
+      const due = stepDueDate(step, saved.createdAt, sent);
+      return {
+        id: step.id,
+        title: step.title,
+        detail: step.detail,
+        due,
+        pending: due ? null : `${step.dayOffset} days after sending`,
+        isSend: step.dayOffset === 0,
+        isDeadline: false,
+        sortAt: (due ?? dueDate(today, step.dayOffset)).getTime(),
+      };
+    }),
+    ...deadlines.map((d) => ({
+      id: d.id,
+      title: d.title,
+      detail: d.detail,
+      due: isoToDate(d.date),
+      pending: null,
+      isSend: false,
+      isDeadline: true,
+      sortAt: isoToDate(d.date).getTime(),
+    })),
+  ].sort((a, b) => a.sortAt - b.sortAt);
+
+  const doneCount = items.filter((s) => saved.done[s.id]).length;
+  const percent = Math.round((doneCount / items.length) * 100);
   // Only a step the user just marked gets the stamp animation.
   const [justDone, setJustDone] = useState<string | null>(null);
 
@@ -37,7 +89,7 @@ export function CaseTracker({ saved }: { saved: StoredCase }) {
   function downloadCalendar() {
     downloadText(
       "claimback-reminders.ics",
-      buildIcs(sent ?? saved.createdAt, steps),
+      buildIcs(sent ?? saved.createdAt, steps, deadlines),
       "text/calendar",
     );
   }
@@ -47,7 +99,7 @@ export function CaseTracker({ saved }: { saved: StoredCase }) {
       <div className="flex items-baseline justify-between gap-4">
         <h2 className="text-tagline font-bold">Follow-up plan</h2>
         <span className="font-mono text-caption text-ink-muted">
-          {doneCount} of {steps.length} done
+          {doneCount} of {items.length} done
         </span>
       </div>
       <div
@@ -55,7 +107,7 @@ export function CaseTracker({ saved }: { saved: StoredCase }) {
         role="progressbar"
         aria-label="Steps done"
         aria-valuemin={0}
-        aria-valuemax={steps.length}
+        aria-valuemax={items.length}
         aria-valuenow={doneCount}
       >
         <div
@@ -67,18 +119,18 @@ export function CaseTracker({ saved }: { saved: StoredCase }) {
         {sent
           ? `Letters sent ${formatDate(new Date(sent))}. Follow-up dates count from that day.`
           : "Mark a letter as sent and the follow-up dates will count from that day."}
+        {deadlines.length > 0 && " Hard deadlines come from your Next steps."}
       </p>
 
       <ol className="mt-8">
-        {steps.map((step, i) => (
+        {items.map((item, i) => (
           <TimelineStep
-            key={step.id}
-            step={step}
-            last={i === steps.length - 1}
-            doneAt={saved.done[step.id]}
-            animate={justDone === step.id}
-            due={stepDueDate(step, saved.createdAt, sent)}
-            onToggle={() => toggle(step.id)}
+            key={item.id}
+            item={item}
+            last={i === items.length - 1}
+            doneAt={saved.done[item.id]}
+            animate={justDone === item.id}
+            onToggle={() => toggle(item.id)}
           />
         ))}
       </ol>
@@ -93,23 +145,32 @@ export function CaseTracker({ saved }: { saved: StoredCase }) {
   );
 }
 
+interface TimelineItem {
+  id: string;
+  title: string;
+  detail: string;
+  due: Date | null;
+  /** Shown instead of a date while the follow-up waits for the letters to go out. */
+  pending: string | null;
+  isSend: boolean;
+  isDeadline: boolean;
+  sortAt: number;
+}
+
 function TimelineStep({
-  step,
+  item,
   last,
   doneAt,
   animate,
-  due,
   onToggle,
 }: {
-  step: TrackerStep;
+  item: TimelineItem;
   last: boolean;
   doneAt: string | undefined;
   animate: boolean;
-  due: Date | null;
   onToggle: () => void;
 }) {
   const done = Boolean(doneAt);
-  const isSend = step.dayOffset === 0;
   return (
     <li className="relative flex gap-4 pb-8 last:pb-0">
       {!last && (
@@ -140,21 +201,22 @@ function TimelineStep({
       <div className="min-w-0 flex-1">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
           <h3 className={`text-body font-semibold ${done ? "text-ink-muted" : ""}`}>
-            {step.title}
+            {item.title}
           </h3>
           <span className="shrink-0 font-mono text-fine text-ink-muted">
             {done
               ? `Done ${formatDate(new Date(doneAt!))}`
-              : due
-                ? `Due ${formatDate(due)}`
-                : `${step.dayOffset} days after sending`}
+              : item.due
+                ? `Due ${formatDate(item.due)}`
+                : item.pending}
           </span>
         </div>
-        <p className="mt-1 text-caption text-ink-muted">{step.detail}</p>
+        <p className="mt-1 text-caption text-ink-muted">{item.detail}</p>
         <div className="mt-3 flex min-h-8 flex-wrap items-center gap-x-5 gap-y-3">
-          {done && isSend && <SentStamp date={doneAt!} animate={animate} />}
+          {item.isDeadline && !done && <Chip tone="deadline">Hard deadline</Chip>}
+          {done && item.isSend && <SentStamp date={doneAt!} animate={animate} />}
           <TextButton onClick={onToggle}>
-            {done ? "Undo" : isSend ? "Mark as sent" : "Mark as done"}
+            {done ? "Undo" : item.isSend ? "Mark as sent" : "Mark as done"}
           </TextButton>
         </div>
       </div>

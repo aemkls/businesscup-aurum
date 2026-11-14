@@ -36,7 +36,8 @@ export function buildSteps(result: AnalysisResult, household?: Household | null)
       id: "assistance",
       dayOffset: 0,
       title: "Request the financial assistance application",
-      detail: "Send the assistance letter, then return the form with proof of income as soon as it arrives.",
+      detail:
+        "Send the assistance letter, then return the form with proof of income as soon as it arrives.",
     });
   }
   steps.push(
@@ -60,7 +61,8 @@ export function buildSteps(result: AnalysisResult, household?: Household | null)
       id: "appeal-deadline",
       dayOffset: 150,
       title: "Appeal deadline is one month away",
-      detail: "Internal appeals are normally due within 180 days of the denial notice. Check the date on your EOB.",
+      detail:
+        "Internal appeals are normally due within 180 days of the denial notice. Check the date on your EOB.",
     });
   }
   return steps;
@@ -89,7 +91,11 @@ export function sentDate(steps: TrackerStep[], done: Record<string, string>): st
  * Due date of a step: send steps are due when the case starts; follow-ups
  * are due a number of days after sending, so null until something is sent.
  */
-export function stepDueDate(step: TrackerStep, createdAt: string, sent: string | null): Date | null {
+export function stepDueDate(
+  step: TrackerStep,
+  createdAt: string,
+  sent: string | null,
+): Date | null {
   if (step.dayOffset === 0) return dueDate(createdAt, 0);
   return sent ? dueDate(sent, step.dayOffset) : null;
 }
@@ -99,11 +105,46 @@ const stamp = (d: Date) =>
 
 const escape = (s: string) => s.replace(/([,;\\])/g, "\\$1").replace(/\n/g, "\\n");
 
+/** A deadline on a fixed date (from the action plan), e.g. a collector's 30-day window. */
+export interface FixedDeadline {
+  id: string;
+  title: string;
+  detail: string;
+  /** ISO date, yyyy-mm-dd. */
+  date: string;
+}
+
+/** An ISO date (yyyy-mm-dd) as a local Date at noon, so time zones never shift the day. */
+export function isoToDate(iso: string): Date {
+  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d, 12);
+}
+
 /**
  * All-day calendar events for every step, as an .ics file body. `from` is
  * the day the letters were sent (or the day the case started, if not yet).
+ * Fixed deadlines from the action plan are added on their own dates.
  */
-export function buildIcs(from: string, steps: TrackerStep[]): string {
+export function buildIcs(
+  from: string,
+  steps: TrackerStep[],
+  deadlines: FixedDeadline[] = [],
+): string {
+  const fixed = deadlines.map((d) => {
+    const start = isoToDate(d.date);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    return [
+      "BEGIN:VEVENT",
+      `UID:${d.id}-${stamp(start)}@claimback`,
+      `DTSTAMP:${stamp(new Date(from))}T000000Z`,
+      `DTSTART;VALUE=DATE:${stamp(start)}`,
+      `DTEND;VALUE=DATE:${stamp(end)}`,
+      `SUMMARY:${escape(`ClaimBack deadline: ${d.title}`)}`,
+      `DESCRIPTION:${escape(d.detail)}`,
+      "END:VEVENT",
+    ].join("\r\n");
+  });
   const events = steps.map((step) => {
     const start = dueDate(from, step.dayOffset);
     const end = dueDate(from, step.dayOffset + 1);
@@ -118,7 +159,12 @@ export function buildIcs(from: string, steps: TrackerStep[]): string {
       "END:VEVENT",
     ].join("\r\n");
   });
-  return ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//ClaimBack//EN", ...events, "END:VCALENDAR"].join(
-    "\r\n",
-  );
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//ClaimBack//EN",
+    ...events,
+    ...fixed,
+    "END:VCALENDAR",
+  ].join("\r\n");
 }
