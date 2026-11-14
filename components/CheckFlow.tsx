@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { sampleBill, sampleEob, samplePlan } from "@/data/samples/sample";
 import { saveCase } from "@/lib/caseStore";
+import { loadPlanDraft, savePlanDraft } from "@/lib/planDraft";
 import { billToText, eobToText } from "@/lib/documentText";
 import type { AnalysisResult, PlanInfo } from "@/lib/types";
 
@@ -49,7 +50,15 @@ function toForm(plan: PlanInfo): PlanForm {
 
 export function CheckFlow({ sample }: { sample: boolean }) {
   const router = useRouter();
-  const [plan, setPlan] = useState<PlanForm>(sample ? toForm(samplePlan) : EMPTY);
+  // This component only renders in the browser (it sits under useSearchParams
+  // in a Suspense boundary), so reading localStorage here is safe.
+  const [plan, setPlanState] = useState<PlanForm>(() =>
+    sample ? toForm(samplePlan) : loadPlanDraft(EMPTY),
+  );
+  function setPlan(next: PlanForm) {
+    setPlanState(next);
+    if (!sample) savePlanDraft(next);
+  }
   const [bill, setBill] = useState<File | null>(null);
   const [eob, setEob] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
@@ -124,7 +133,18 @@ export function CheckFlow({ sample }: { sample: boolean }) {
       )}
 
       <section className="mt-10">
-        <StepHeading n={1} title="Your plan" />
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <StepHeading n={1} title="Your plan" />
+          {!sample && (
+            <button
+              type="button"
+              onClick={() => setPlan(toForm(samplePlan))}
+              className="text-sm text-accent underline hover:text-accent-dark"
+            >
+              Fill from sample
+            </button>
+          )}
+        </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           {FIELDS.map((field) => (
             <label key={field.key} className="block">
@@ -178,7 +198,7 @@ export function CheckFlow({ sample }: { sample: boolean }) {
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <FileField
               label="Itemized bill"
-              hint="Required. Photo or PDF. Ask the hospital for the itemized version."
+              hint="Required. Photo (JPG, PNG, HEIC) or PDF. Ask the hospital for the itemized version."
               file={bill}
               onChange={setBill}
             />
@@ -244,7 +264,7 @@ function FileField({
       <span className="mt-1 block text-xs text-muted">{hint}</span>
       <input
         type="file"
-        accept="image/jpeg,image/png,image/webp,application/pdf"
+        accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif,application/pdf"
         className="sr-only"
         onChange={(e) => onChange(e.target.files?.[0] ?? null)}
       />

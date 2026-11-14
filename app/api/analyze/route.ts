@@ -10,17 +10,32 @@ import type { AnalysisResult, Bill, Eob } from "@/lib/types";
 export const maxDuration = 60;
 
 const MAX_BYTES = 10 * 1024 * 1024;
-const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
+const ALLOWED_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic", // iPhone photos
+  "image/heif",
+  "application/pdf",
+]);
+
+/** Some browsers send HEIC photos with an empty type; fall back to the extension. */
+function mimeTypeOf(file: File): string {
+  if (file.type) return file.type;
+  const ext = file.name.split(".").pop()?.toLowerCase();
+  return ext === "heic" || ext === "heif" ? `image/${ext}` : "";
+}
 
 const fail = (status: number, error: string) => Response.json({ error }, { status });
 
 /** Uploaded files are read into memory for the AI call and never stored. */
 async function readUpload(value: FormDataEntryValue | null): Promise<DocumentInput | null> {
   if (!(value instanceof File) || value.size === 0) return null;
-  if (!ALLOWED_TYPES.has(value.type)) throw new Error("Upload a JPG, PNG or PDF file.");
+  const mimeType = mimeTypeOf(value);
+  if (!ALLOWED_TYPES.has(mimeType)) throw new Error("Upload a JPG, PNG, HEIC or PDF file.");
   if (value.size > MAX_BYTES) throw new Error("Files must be under 10 MB.");
   const base64 = Buffer.from(await value.arrayBuffer()).toString("base64");
-  return { kind: "file", mimeType: value.type, base64 };
+  return { kind: "file", mimeType, base64 };
 }
 
 /**
