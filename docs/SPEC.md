@@ -22,17 +22,75 @@ why, and the documents to get it fixed.
 
 ## Screens
 
-1. **Landing.** One claim, two actions: "Check my bill", "Try with a sample bill".
-   Shows "You have an open case" when this browser has one.
-2. **Check.** Plan terms (deductible, deductible met, coinsurance,
-   out-of-pocket max and met, network) and the documents (bill required, EOB
-   optional).
-3. **Results (free).** Headline amount, billed vs fair amount, each finding
-   with amount, confidence, who to contact and the evidence.
-4. **Unlock.** $19 one-time through Stripe Checkout.
-5. **Documents (paid).** Dispute letter, insurer appeal, call script.
-6. **Follow-up plan (paid).** Steps with due dates, progress saved locally,
-   calendar export (.ics).
+### 1. Landing `/`
+
+- One claim: "Your hospital bill is probably wrong. Find out by how much."
+- Two actions: **Check my bill** (`/check`) and **Try with a sample bill**
+  (`/check?sample=1`).
+- "You have an open case" banner when this browser already has one.
+
+### 2. Check `/check`: step 1 "Your plan"
+
+| Field | Notes |
+|---|---|
+| Annual deductible | $ |
+| Deductible already paid this year | $, before this visit |
+| Coinsurance | %, patient share after the deductible |
+| Out-of-pocket maximum | $ |
+| Out-of-pocket already paid this year | $, before this visit |
+| Copay for this visit | $, 0 if none |
+| Network | In-network / Out-of-network |
+
+- **Fill from sample** fills the form with the sample plan.
+- The form is remembered in `localStorage`; the server validates it with zod.
+
+### 3. Check `/check`: step 2 "Upload"
+
+- Itemized bill, required: photo (JPG, PNG, WebP, HEIC) or PDF, up to 10 MB.
+- EOB, optional, same formats. Without it only bill-only rules run.
+- Links to download a sample bill (photo, PDF) and EOB to try a real upload.
+- Files go to `POST /api/analyze` in memory and are never stored.
+- In sample mode the documents are shown as text and still go through the
+  same AI reader and rule engine.
+
+### 4. Results `/results` (free)
+
+- Headline: **"$X likely overcharged"**, then billed / in dispute / fair amount.
+- One card per finding: type, amount, confidence **High / Medium / Low**,
+  who to contact (hospital or insurer), plain-English explanation, evidence
+  from the documents.
+- The bill line by line, with flagged lines marked.
+- Financial assistance check (household size and income, kept on the device).
+- Paywall: the dispute letter and call script are shown **blurred**. The
+  teaser is built only from data already on the page; the real documents are
+  generated on the server after payment.
+
+### 5. Unlock
+
+- `POST /api/checkout` creates a Stripe Checkout session in **test mode**,
+  **$19 one time per bill**. Test card `4242 4242 4242 4242`.
+- Stripe redirects back to `/results?session_id=…`; `POST /api/letters`
+  checks with Stripe that the session is paid, recomputes the findings from
+  the documents and returns the dispute letter, insurer appeal and call script.
+- Without `STRIPE_SECRET_KEY` the deployment runs in demo mode and unlocks
+  without a charge.
+
+### 6. My case `/case`
+
+- Case tracker stored in `localStorage`: provider, billed, in dispute.
+- Timeline of steps with due dates (send letter, file appeal, day-14 call,
+  day-30 escalation, appeal deadline), ticked off and saved locally.
+- **Add these dates to my calendar** downloads an `.ics` file with reminders.
+
+## Data and logic
+
+- Types: `lib/types.ts` (`PlanInfo`, `BillLineItem`, `Bill`, `EobLine`,
+  `Eob`, `Finding`, `AnalysisResult`).
+- AI (`lib/ai/`): Gemini Flash transcribes documents to JSON and rewords
+  explanations and letters. A guard rejects AI text with dollar amounts the
+  engine did not produce.
+- Rules (`lib/engine/`): pure functions, unit-tested against the sample case
+  in `data/samples/`, whose planted errors are listed in its README.
 
 ## Why they come back
 
