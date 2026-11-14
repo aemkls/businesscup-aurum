@@ -155,11 +155,13 @@ export function ResultsView({
             </h1>
           )}
 
-          <dl className="mt-8 grid grid-cols-3 gap-4 sm:max-w-[640px]">
-            <Figure label="You were billed" value={usd(result.amountBilled)} />
-            <Figure label="In dispute" value={usd(result.potentialSavings)} />
-            <Figure label="If corrected" value={usd(result.fairAmount)} />
-          </dl>
+          {!clean && (
+            <dl className="mt-8 grid grid-cols-3 gap-4 sm:max-w-[640px]">
+              <Figure label="You were billed" value={usd(result.amountBilled)} />
+              <Figure label="In dispute" value={usd(result.potentialSavings)} />
+              <Figure label="If corrected" value={usd(result.fairAmount)} />
+            </dl>
+          )}
 
           <div className="mt-8 flex flex-wrap items-center gap-4">
             {clean ? (

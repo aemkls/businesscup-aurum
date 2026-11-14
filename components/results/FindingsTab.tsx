@@ -19,7 +19,7 @@ export function FindingsTab({
   if (result.findings.length === 0) {
     return (
       <div className="rounded-[18px] bg-parchment p-6 sm:p-8">
-        <h2 className="text-tagline font-semibold">Your bill looks right</h2>
+        <h2 className="text-tagline font-semibold">Nothing to dispute</h2>
         <p className="mt-2 text-body text-ink-muted">
           {result.meta.hasEob
             ? "Every line matches your EOB and your plan terms. There is nothing to dispute."
