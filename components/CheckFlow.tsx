@@ -113,6 +113,7 @@ export function CheckFlow({ sample }: { sample: SampleKind | null }) {
   );
   const [step, setStep] = useState<1 | 2>(1);
   const [showProblem, setShowProblem] = useState(false);
+  const [needBill, setNeedBill] = useState(false);
   const [bill, setBill] = useState<File | null>(null);
   const [eob, setEob] = useState<File | null>(null);
   const [running, setRunning] = useState(false);
@@ -125,14 +126,23 @@ export function CheckFlow({ sample }: { sample: SampleKind | null }) {
 
   const problem = planProblem(plan);
 
-  function next(event: React.FormEvent) {
+  /** Step 1 -> 2: the bill comes first, as on the landing page. */
+  function toPlanStep() {
+    if (!sample && !bill) {
+      setNeedBill(true);
+      return;
+    }
+    setStep(2);
+    window.scrollTo({ top: 0 });
+  }
+
+  function submitPlan(event: React.FormEvent) {
     event.preventDefault();
     if (problem) {
       setShowProblem(true);
       return;
     }
-    setStep(2);
-    window.scrollTo({ top: 0 });
+    void run();
   }
 
   async function run() {
@@ -172,7 +182,8 @@ export function CheckFlow({ sample }: { sample: SampleKind | null }) {
     <Section>
       <div className="mx-auto max-w-[640px]">
         <p className="text-caption font-semibold text-ink-muted">
-          {sampleCase ? `Sample case: ${sampleCase.label}` : "Check my bill"} · Step {step} of 2
+          {sampleCase ? `Sample case: ${sampleCase.label}` : "Check my bill"} · Step {step} of 2:{" "}
+          {step === 1 ? "your bill" : "your plan"}
         </p>
         <div
           className="mt-3 h-1 overflow-hidden rounded-full bg-desk-deep"
@@ -189,14 +200,104 @@ export function CheckFlow({ sample }: { sample: SampleKind | null }) {
         </div>
 
         {step === 1 ? (
-          <form onSubmit={next} noValidate>
+          <div>
+            <h1 className="mt-8 text-section-sm font-extrabold md:text-section">Your bill</h1>
+            <p className="mt-3 text-body text-ink-muted">
+              {sample
+                ? "An invented patient's bill and EOB. They go through the same AI reader and rules as an upload."
+                : "Add a photo or PDF of your itemized bill, and your insurer's EOB if you have it. We read them in memory and never save them."}
+            </p>
+            {sample && <SampleSwitch current={sample} />}
+
+            {sample ? (
+              <div className="mt-8 space-y-3">
+                <DocumentPreview
+                  title="Hospital bill (sample)"
+                  text={billToText(sampleCase!.bill)}
+                />
+                <DocumentPreview
+                  title="Explanation of Benefits (sample)"
+                  text={eobToText(sampleCase!.eob)}
+                />
+              </div>
+            ) : (
+              <div className="mt-8 grid gap-6 sm:grid-cols-2">
+                <FileField
+                  label="Drop your bill here"
+                  hint="The itemized bill. Required. Photo or PDF."
+                  file={bill}
+                  onChange={(file) => {
+                    setBill(file);
+                    setNeedBill(false);
+                  }}
+                />
+                <FileField
+                  label="Drop your EOB here"
+                  hint="From your insurer. Optional, but most checks need it."
+                  file={eob}
+                  onChange={setEob}
+                />
+                <p className="text-caption text-ink-muted sm:col-span-2">
+                  No bill at hand? Download a sample and upload it:{" "}
+                  <a
+                    href="/samples/sample-bill.jpg"
+                    download
+                    className="font-semibold text-action hover:underline"
+                  >
+                    bill photo
+                  </a>
+                  ,{" "}
+                  <a
+                    href="/samples/sample-bill.pdf"
+                    download
+                    className="font-semibold text-action hover:underline"
+                  >
+                    bill PDF
+                  </a>
+                  ,{" "}
+                  <a
+                    href="/samples/sample-eob.pdf"
+                    download
+                    className="font-semibold text-action hover:underline"
+                  >
+                    EOB PDF
+                  </a>
+                  . Or{" "}
+                  <Link
+                    href="/check?sample=er"
+                    className="font-semibold text-action hover:underline"
+                  >
+                    try a sample without uploading
+                  </Link>
+                  .
+                </p>
+              </div>
+            )}
+
+            {needBill && (
+              <p role="alert" className="mt-6 text-caption font-semibold text-pen">
+                Add a photo or PDF of your bill to continue.
+              </p>
+            )}
+            <div className="mt-8">
+              <Button onClick={toPlanStep}>Continue to your plan</Button>
+            </div>
+          </div>
+        ) : running ? (
+          <div>
+            <h1 className="mt-8 text-section-sm font-extrabold md:text-section">
+              Checking your bill
+            </h1>
+            <AnalysisProgress hasEob={sample !== null || eob !== null} />
+          </div>
+        ) : (
+          <form onSubmit={submitPlan} noValidate>
             <h1 className="mt-8 text-section-sm font-extrabold md:text-section">Your plan</h1>
             <p className="mt-3 text-body text-ink-muted">
               {sample
                 ? "An invented patient's plan, filled in for you. The check after this is the real one."
                 : "Copy six numbers from your insurance portal or plan summary. We keep them in this browser."}
             </p>
-            {sample && <SampleSwitch current={sample} />}
             {!sample && (
               <TextButton onClick={() => setPlan(toForm(SAMPLES.er.plan))} className="mt-2">
                 Fill from sample
@@ -249,105 +350,30 @@ export function CheckFlow({ sample }: { sample: SampleKind | null }) {
                 {problem}
               </p>
             )}
-            <div className="mt-8">
-              <Button type="submit">Continue</Button>
+
+            {failure && (
+              <div className="mt-8 space-y-3">
+                <ErrorNote>{failure.message}</ErrorNote>
+                {failure.busy && !sample && (
+                  <p className="text-caption text-ink-muted">
+                    The free AI reader is sometimes overloaded for a minute. You can also{" "}
+                    <Link
+                      href="/check?sample=er"
+                      className="font-semibold text-action hover:underline"
+                    >
+                      try the sample bill
+                    </Link>
+                    .
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="mt-8 flex flex-wrap items-center gap-4">
+              <Button type="submit">{failure ? "Try again" : "Run the check"}</Button>
+              <TextButton onClick={() => setStep(1)}>Back to your bill</TextButton>
             </div>
           </form>
-        ) : (
-          <div>
-            <h1 className="mt-8 text-section-sm font-extrabold md:text-section">Your documents</h1>
-            {running ? (
-              <AnalysisProgress hasEob={sample !== null || eob !== null} />
-            ) : (
-              <>
-                <p className="mt-3 text-body text-ink-muted">
-                  {sample
-                    ? "The sample bill and EOB below go through the same AI reader and rules as an upload."
-                    : "We read your files in memory to run the check and never save them."}
-                </p>
-
-                {sample ? (
-                  <div className="mt-8 space-y-3">
-                    <DocumentPreview
-                      title="Hospital bill (sample)"
-                      text={billToText(sampleCase!.bill)}
-                    />
-                    <DocumentPreview
-                      title="Explanation of Benefits (sample)"
-                      text={eobToText(sampleCase!.eob)}
-                    />
-                  </div>
-                ) : (
-                  <div className="mt-8 grid gap-6 sm:grid-cols-2">
-                    <FileField
-                      label="Drop your bill here"
-                      hint="The itemized bill. Required. Photo or PDF."
-                      file={bill}
-                      onChange={setBill}
-                    />
-                    <FileField
-                      label="Drop your EOB here"
-                      hint="From your insurer. Optional, but most checks need it."
-                      file={eob}
-                      onChange={setEob}
-                    />
-                    <p className="text-caption text-ink-muted sm:col-span-2">
-                      No bill at hand? Download a sample and upload it:{" "}
-                      <a
-                        href="/samples/sample-bill.jpg"
-                        download
-                        className="font-semibold text-action hover:underline"
-                      >
-                        bill photo
-                      </a>
-                      ,{" "}
-                      <a
-                        href="/samples/sample-bill.pdf"
-                        download
-                        className="font-semibold text-action hover:underline"
-                      >
-                        bill PDF
-                      </a>
-                      ,{" "}
-                      <a
-                        href="/samples/sample-eob.pdf"
-                        download
-                        className="font-semibold text-action hover:underline"
-                      >
-                        EOB PDF
-                      </a>
-                      .
-                    </p>
-                  </div>
-                )}
-
-                {failure && (
-                  <div className="mt-8 space-y-3">
-                    <ErrorNote>{failure.message}</ErrorNote>
-                    {failure.busy && !sample && (
-                      <p className="text-caption text-ink-muted">
-                        The free AI reader is sometimes overloaded for a minute. You can also{" "}
-                        <Link
-                          href="/check?sample=er"
-                          className="font-semibold text-action hover:underline"
-                        >
-                          try the sample bill
-                        </Link>
-                        .
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                <div className="mt-8 flex flex-wrap items-center gap-4">
-                  <Button onClick={run} disabled={!sample && !bill}>
-                    {failure ? "Try again" : "Run the check"}
-                  </Button>
-                  <TextButton onClick={() => setStep(1)}>Back to your plan</TextButton>
-                </div>
-              </>
-            )}
-          </div>
         )}
       </div>
     </Section>

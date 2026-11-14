@@ -39,7 +39,16 @@ pen; everything else stays calm.
 - Three steps, then three KFF numbers with the source.
 - "You have an open case" line in the hero when this browser has one.
 
-### 2. Check `/check`, step 1 of 2: "Your plan"
+### 2. Check `/check`, step 1 of 2: "Your bill"
+
+- The upload comes first, so "Check my bill" opens on it. Itemized bill,
+  required (Continue asks for it); EOB, optional. Photo (JPG, PNG, WebP, HEIC) or
+  PDF up to 10 MB, click or drag and drop.
+- Links to download a sample bill (photo, PDF) and EOB to try a real upload.
+- In sample mode: the sample bill and EOB as text, and the ER visit /
+  annual physical switch.
+
+### 3. Check `/check`, step 2 of 2: "Your plan"
 
 | Field | Notes |
 |---|---|
@@ -56,15 +65,9 @@ pen; everything else stays calm.
   insurer portal, insurance card).
 - **Fill from sample**; the form is remembered in `localStorage`; inline
   validation (e.g. deductible paid cannot exceed the deductible).
-
-### 3. Check `/check`, step 2 of 2: "Your documents"
-
-- Itemized bill, required; EOB, optional. Photo (JPG, PNG, WebP, HEIC) or
-  PDF up to 10 MB, click or drag and drop.
-- Links to download a sample bill (photo, PDF) and EOB to try a real upload.
-- While the check runs: a vertical list of steps that tick off.
-- If the AI reader is overloaded (503): a plain message, **Try again**, and
-  a link to the sample.
+- **Run the check** sends the files and the plan. While it runs: a vertical
+  list of steps that tick off. If the AI reader is overloaded (503): a plain
+  message, **Try again**, and a link to the sample.
 
 ### 4. Results `/results`
 

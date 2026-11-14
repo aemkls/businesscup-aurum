@@ -7,12 +7,12 @@ import { runEngine, summarize } from "@/lib/engine";
 
 const STEPS = [
   {
-    title: "Tell us your plan",
-    text: "Your deductible, coinsurance, out-of-pocket max and copay, from your insurance portal.",
+    title: "Upload the bill and the EOB",
+    text: "A photo or PDF of the itemized bill and your insurer's Explanation of Benefits.",
   },
   {
-    title: "Add the bill and the EOB",
-    text: "A photo or PDF of the itemized bill and your insurer's Explanation of Benefits.",
+    title: "Tell us your plan",
+    text: "Your deductible, coinsurance, out-of-pocket max and copay, from your insurance portal.",
   },
   {
     title: "Get it corrected",
@@ -48,8 +48,8 @@ export default function Home() {
               </span>
             </h1>
             <p className="mt-5 max-w-[520px] text-lead text-ink-muted">
-              Add your plan and your bill. We check every line against your insurance and mark what
-              you likely don&apos;t owe.
+              Upload your bill and add your plan. We check every line against your insurance and
+              mark what you likely don&apos;t owe.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <ButtonLink href="/check?sample=er" className="w-full sm:w-auto">
