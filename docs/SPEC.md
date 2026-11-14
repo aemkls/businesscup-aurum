@@ -106,8 +106,10 @@ pen; everything else stays calm.
   session reopens that bill any time; another bill gets 402 `other_case`, and
   the results show that case's own paywall with "Your last payment unlocked a
   different bill. This one is a new case."
-- **Loyalty card: every 4th case is free.** A first-visit notice explains it
-  ("Got it" hides it for good). Next to the pay button: 4 stamp circles, the
+- **Loyalty card: every 4th case is free.** On the first visit a centered
+  dialog over the dimmed page explains it (4 stamps, the 4th "$0 / Free");
+  "Got it", ×, Esc or a click outside closes it for good. Not shown on the
+  return from a payment. Next to the pay button: 4 stamp circles, the
   4th marked Free, and the terms (same card, same browser; wallets may not
   count). Each paid case adds a stamp ("Stamp 2 of 3 added"); with 3 the
   button turns into **Unlock free with your loyalty card**, a $0 Stripe setup
